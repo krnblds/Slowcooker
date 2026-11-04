@@ -15,6 +15,6 @@ const { preview, error, loading } = useCronPreview(toRef(props, "expression"), t
       <li v-for="t in preview.upcoming" :key="t">{{ formatDateTime(t) }}</li>
       <li v-if="preview.upcoming.length === 0" class="sc-muted">Never fires.</li>
     </ol>
-    <p v-else-if="loading" class="sc-muted">…</p>
+    <p v-else-if="loading" class="sc-muted"><span class="sc-skeleton"></span></p>
   </div>
 </template>

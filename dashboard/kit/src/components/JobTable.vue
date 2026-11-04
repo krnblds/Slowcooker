@@ -40,7 +40,7 @@ const emit = defineEmits<{ select: [job: Job]; requeue: [job: Job]; delete: [job
           <div class="sc-job__name">{{ job.displayName }}</div>
           <div v-if="job.lastError" class="sc-job__error" :title="job.lastError">{{ errorHeadline(job.lastError) }}</div>
         </td>
-        <td><code>{{ job.queue }}</code></td>
+        <td><span class="sc-chip">{{ job.queue }}</span></td>
         <td><StateBadge :state="job.state" /></td>
         <td class="sc-num">{{ job.attempt }}</td>
         <td><RelativeTime :value="job.state === 'scheduled' ? job.runAt : job.completedAt ?? job.runAt" :now="now" /></td>
@@ -52,7 +52,7 @@ const emit = defineEmits<{ select: [job: Job]; requeue: [job: Job]; delete: [job
           </slot>
         </td>
       </tr>
-      <tr v-if="jobs.length === 0"><td colspan="7" class="sc-muted"><slot name="empty">No jobs match.</slot></td></tr>
+      <tr v-if="jobs.length === 0"><td colspan="7"><slot name="empty"><div class="sc-empty"><span class="sc-empty__title">No jobs match</span><span>Try a different state or queue.</span></div></slot></td></tr>
     </tbody>
   </table>
 </template>
