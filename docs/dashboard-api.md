@@ -62,9 +62,9 @@ Counts by state, overall and per queue, plus the number of recurring jobs. Poll 
 
 The `queues` array from `/stats` on its own.
 
-### `GET /jobs?state=&queue=&skip=&take=`
+### `GET /jobs?state=&queue=&name=&skip=&take=`
 
-Jobs newest first. `state` is one of the four state names (case-insensitive); `queue` is an exact name; `take` is clamped to 1..500 (default 50).
+Jobs newest first. `state` is one of the four state names (case-insensitive); `queue` is an exact queue name; `name` is an exact job name (the `[JobName]`, e.g. `send-welcome-email`), which is how the dashboard lists the runs of one recurring schedule; `take` is clamped to 1..500 (default 50). Filters combine.
 
 ```json
 {

@@ -9,6 +9,7 @@ namespace Slowcooker.Storage.Redis;
 ///   p:idx:all             ZSET   all jobs, score = created_at (ms)        (listing)
 ///   p:idx:state:{n}       ZSET   jobs by state, score = created_at (ms)   (listing, filtering)
 ///   p:idx:queue:{queue}   ZSET   jobs by queue, score = created_at (ms)   (listing, filtering)
+///   p:idx:name:{name}     ZSET   jobs by job name, score = created_at (ms) (listing, filtering)
 ///   p:idx:completed:{n}   ZSET   succeeded/failed jobs, score = completed_at (ms) (retention)
 ///   p:stats               HASH   "{queue}|{state}" -> count
 ///   p:idem:{key}          STRING id of the job that owns an idempotency key
@@ -25,6 +26,7 @@ internal static class RedisScripts
         local function queueKey(q) return p .. ':queue:' .. q end
         local function stateIdx(s) return p .. ':idx:state:' .. s end
         local function queueIdx(q) return p .. ':idx:queue:' .. q end
+        local function nameIdx(n) return p .. ':idx:name:' .. n end
         local function completedIdx(s) return p .. ':idx:completed:' .. s end
         local function stat(q, s, d) redis.call('HINCRBY', p .. ':stats', q .. '|' .. s, d) end
         local function moveState(id, q, from, to, created)
@@ -42,6 +44,7 @@ internal static class RedisScripts
           redis.call('ZADD', queueKey(q), runAt, id)
           redis.call('ZADD', stateIdx(0), created, id)
           redis.call('ZADD', queueIdx(q), created, id)
+          redis.call('ZADD', nameIdx(name), created, id)
           redis.call('ZADD', p .. ':idx:all', created, id)
           stat(q, 0, 1)
           signal()
@@ -190,14 +193,15 @@ internal static class RedisScripts
     /// <summary>ARGV: p, id. Returns 1 or 0.</summary>
     public const string Delete = Prelude + "\n" + """
         local id = ARGV[2]
-        local h = redis.call('HMGET', jobKey(id), 'state', 'queue', 'idempotency_key')
+        local h = redis.call('HMGET', jobKey(id), 'state', 'queue', 'idempotency_key', 'name')
         if h[1] == false then return 0 end
-        local state, q, idem = tonumber(h[1]), h[2], h[3]
+        local state, q, idem, name = tonumber(h[1]), h[2], h[3], h[4]
         redis.call('DEL', jobKey(id))
         redis.call('ZREM', queueKey(q), id)
         redis.call('ZREM', p .. ':processing', id)
         redis.call('ZREM', stateIdx(state), id)
         redis.call('ZREM', queueIdx(q), id)
+        redis.call('ZREM', nameIdx(name), id)
         redis.call('ZREM', p .. ':idx:all', id)
         redis.call('ZREM', completedIdx(2), id)
         redis.call('ZREM', completedIdx(3), id)
@@ -214,11 +218,12 @@ internal static class RedisScripts
         local ids = redis.call('ZRANGEBYSCORE', completedIdx(state), '-inf', '(' .. before, 'LIMIT', 0, max)
         local n = 0
         for _, id in ipairs(ids) do
-          local h = redis.call('HMGET', jobKey(id), 'queue', 'idempotency_key')
+          local h = redis.call('HMGET', jobKey(id), 'queue', 'idempotency_key', 'name')
           if h[1] then
             redis.call('DEL', jobKey(id))
             redis.call('ZREM', stateIdx(state), id)
             redis.call('ZREM', queueIdx(h[1]), id)
+            redis.call('ZREM', nameIdx(h[3]), id)
             redis.call('ZREM', p .. ':idx:all', id)
             stat(h[1], state, -1)
             if h[2] and h[2] ~= '' and redis.call('GET', p .. ':idem:' .. h[2]) == id then
@@ -231,18 +236,26 @@ internal static class RedisScripts
         return n
         """;
 
-    /// <summary>ARGV: p, state ('' = any), queue ('' = any), skip, take. Returns [total, [HGETALL, ...]].</summary>
+    /// <summary>ARGV: p, state ('' = any), queue ('' = any), name ('' = any), skip, take, temp key suffix. Returns [total, [HGETALL, ...]].</summary>
     public const string Query = Prelude + "\n" + """
-        local state, q, skip, take = ARGV[2], ARGV[3], tonumber(ARGV[4]), tonumber(ARGV[5])
+        local state, q, name, skip, take = ARGV[2], ARGV[3], ARGV[4], tonumber(ARGV[5]), tonumber(ARGV[6])
+        local keys = {}
+        if state ~= '' then keys[#keys + 1] = stateIdx(state) end
+        if q ~= '' then keys[#keys + 1] = queueIdx(q) end
+        if name ~= '' then keys[#keys + 1] = nameIdx(name) end
         local key
         local temp = nil
-        if state ~= '' and q ~= '' then
-          temp = p .. ':tmp:' .. ARGV[6]
-          redis.call('ZINTERSTORE', temp, 2, stateIdx(state), queueIdx(q), 'AGGREGATE', 'MAX')
+        if #keys == 0 then key = p .. ':idx:all'
+        elseif #keys == 1 then key = keys[1]
+        else
+          temp = p .. ':tmp:' .. ARGV[7]
+          local args = { 'ZINTERSTORE', temp, #keys }
+          for _, k in ipairs(keys) do args[#args + 1] = k end
+          args[#args + 1] = 'AGGREGATE'
+          args[#args + 1] = 'MAX'
+          redis.call(unpack(args))
           key = temp
-        elseif state ~= '' then key = stateIdx(state)
-        elseif q ~= '' then key = queueIdx(q)
-        else key = p .. ':idx:all' end
+        end
         local total = redis.call('ZCARD', key)
         local ids = redis.call('ZREVRANGE', key, skip, skip + take - 1)
         if temp then redis.call('DEL', temp) end

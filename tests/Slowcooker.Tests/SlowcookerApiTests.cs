@@ -114,6 +114,24 @@ public sealed class SlowcookerApiTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task Jobs_can_be_filtered_by_exact_job_name()
+    {
+        await _client.EnqueueAsync(new Note("a"));
+        await _client.EnqueueAsync(new ChargeCard("o1", 5));
+        await _client.EnqueueAsync(new ChargeCard("o2", 6));
+
+        var charges = await GetAsync<PageDto<JobDto>>("/api/jobs-admin/jobs?name=charge-card");
+        Assert.Equal(2, charges.Total);
+        Assert.All(charges.Items, j => Assert.Equal("charge-card", j.Name));
+
+        var scoped = await GetAsync<PageDto<JobDto>>("/api/jobs-admin/jobs?name=charge-card&queue=default");
+        Assert.Equal(0, scoped.Total);
+
+        var all = await GetAsync<PageDto<JobDto>>("/api/jobs-admin/jobs?name=");
+        Assert.Equal(3, all.Total);
+    }
+
+    [Fact]
     public async Task Enum_values_are_camelCase_strings_on_the_wire()
     {
         await _client.EnqueueAsync(new Note("x"));

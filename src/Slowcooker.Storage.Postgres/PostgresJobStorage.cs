@@ -67,6 +67,7 @@ public sealed class PostgresJobStorage : IJobStorage, IAsyncDisposable
         CREATE INDEX IF NOT EXISTS jobs_purge_idx ON {_jobs} (state, completed_at);
         CREATE INDEX IF NOT EXISTS jobs_list_idx ON {_jobs} (created_at DESC, id DESC);
         CREATE INDEX IF NOT EXISTS jobs_queue_list_idx ON {_jobs} (queue, state, created_at DESC);
+        CREATE INDEX IF NOT EXISTS jobs_name_list_idx ON {_jobs} (job_name, created_at DESC);
         CREATE UNIQUE INDEX IF NOT EXISTS jobs_idempotency_idx ON {_jobs} (idempotency_key) WHERE idempotency_key IS NOT NULL;
 
         CREATE TABLE IF NOT EXISTS {_recurring} (
@@ -329,6 +330,7 @@ public sealed class PostgresJobStorage : IJobStorage, IAsyncDisposable
         var where = new List<string>();
         if (query.State is { } state) where.Add("state = @state");
         if (query.Queue is not null) where.Add("queue = @queue");
+        if (query.Name is not null) where.Add("job_name = @name");
         var whereSql = where.Count == 0 ? "" : "WHERE " + string.Join(" AND ", where);
 
         await using var conn = await _dataSource.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
@@ -339,6 +341,7 @@ public sealed class PostgresJobStorage : IJobStorage, IAsyncDisposable
         {
             if (query.State is { } s) cmd.Parameters.AddWithValue("state", (short)s);
             if (query.Queue is not null) cmd.Parameters.AddWithValue("queue", query.Queue);
+            if (query.Name is not null) cmd.Parameters.AddWithValue("name", query.Name);
         }
         page.Parameters.AddWithValue("skip", query.Skip);
         page.Parameters.AddWithValue("take", query.Take);

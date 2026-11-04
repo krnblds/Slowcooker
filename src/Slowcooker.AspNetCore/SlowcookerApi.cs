@@ -57,17 +57,11 @@ public static class SlowcookerApi
         group.MapGet("/queues", async (IJobMonitor monitor, CancellationToken ct) =>
             Json((await monitor.GetStatsAsync(ct)).Queues.Select(ToDto).ToList()));
 
-        group.MapGet("/jobs", async (IJobMonitor monitor, string? state, string? queue, int skip = 0, int take = 50, CancellationToken ct = default) =>
+        group.MapGet("/jobs", async (IJobMonitor monitor, string? state, string? queue, string? name, int skip = 0, int take = 50, CancellationToken ct = default) =>
         {
-            JobState? parsedState = null;
-            if (!string.IsNullOrWhiteSpace(state))
-            {
-                if (!Enum.TryParse<JobState>(state, ignoreCase: true, out var s))
-                    return Json(new ErrorDto($"Unknown state '{state}'. Use scheduled, processing, succeeded or failed."), 400);
-                parsedState = s;
-            }
+            if (!TryParseState(state, out var parsedState, out var error)) return error;
 
-            var query = new JobQuery { State = parsedState, Queue = queue, Skip = skip, Take = take }.Normalized();
+            var query = new JobQuery { State = parsedState, Queue = queue, Name = name, Skip = skip, Take = take }.Normalized();
             var page = await monitor.QueryAsync(query, ct);
             return Json(new PageDto<JobDto>(page.Items.Select(JobDto.From).ToList(), page.Total, query.Skip, query.Take));
         });
@@ -127,6 +121,20 @@ public static class SlowcookerApi
 
             return Json(new CronPreviewDto(cron!.Expression, true, null, zone.Id, cron.Upcoming(time.GetUtcNow(), zone, count)));
         });
+    }
+
+    private static bool TryParseState(string? state, out JobState? parsed, out IResult? error)
+    {
+        parsed = null;
+        error = null;
+        if (string.IsNullOrWhiteSpace(state)) return true;
+        if (Enum.TryParse<JobState>(state, ignoreCase: true, out var s))
+        {
+            parsed = s;
+            return true;
+        }
+        error = Json(new ErrorDto($"Unknown state '{state}'. Use scheduled, processing, succeeded or failed."), 400);
+        return false;
     }
 
     private static QueueDto ToDto(QueueStats q) => new(q.Name, q.Scheduled, q.Processing, q.Succeeded, q.Failed);
