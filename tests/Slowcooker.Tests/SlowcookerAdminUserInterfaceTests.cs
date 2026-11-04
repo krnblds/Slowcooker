@@ -64,6 +64,33 @@ public sealed class SlowcookerAdminUserInterfaceTests
     }
 
     [Fact]
+    public async Task Page_carries_a_base_href_for_the_mount_point_and_serves_client_side_routes()
+    {
+        await using var host = new Host();
+        var root = await host.Http.GetStringAsync("/slowcooker/");
+        Assert.Contains("<base href=\"/slowcooker/\">", root);
+
+        var deep = await host.Http.GetAsync("/slowcooker/jobs/01abc");
+        Assert.Equal(HttpStatusCode.OK, deep.StatusCode);
+        Assert.Equal("text/html", deep.Content.Headers.ContentType?.MediaType);
+        Assert.Contains("<base href=\"/slowcooker/\">", await deep.Content.ReadAsStringAsync());
+
+        // Unknown API paths and unknown files stay 404 rather than becoming the page.
+        Assert.Equal(HttpStatusCode.NotFound, (await host.Http.GetAsync("/slowcooker/api/nope")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await host.Http.GetAsync("/slowcooker/jobs/logo.png")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Base_href_includes_the_application_path_base_and_the_explicit_mount()
+    {
+        await using var behindProxy = new Host(o => o.Path = "/ops", pipeline: app => app.UsePathBase("/app"));
+        Assert.Contains("<base href=\"/app/ops/\">", await behindProxy.Http.GetStringAsync("/app/ops/recurring"));
+
+        await using var mapped = new Host(pipeline: app => app.MapSlowcookerAdminUserInterface());
+        Assert.Contains("<base href=\"/slowcooker/\">", await mapped.Http.GetStringAsync("/slowcooker/jobs/1"));
+    }
+
+    [Fact]
     public async Task Path_without_trailing_slash_redirects_to_the_page()
     {
         await using var host = new Host();

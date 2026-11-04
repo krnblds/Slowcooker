@@ -1,5 +1,6 @@
 using System.Collections.Frozen;
 using System.Reflection;
+using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.StaticFiles;
 
@@ -20,16 +21,47 @@ internal static class EmbeddedDashboard
         .Where(n => n.StartsWith(Prefix, StringComparison.Ordinal))
         .ToFrozenDictionary(n => n[Prefix.Length..].Replace('\\', '/'), n => n, StringComparer.Ordinal);
 
-    public static bool IsAvailable => Files.ContainsKey("index.html");
-
-    public static IResult Index(HttpContext http)
+    private static readonly Lazy<string?> IndexHtml = new(() =>
     {
-        // Assets are referenced relatively (./assets/...), so the page must live at a URL with a trailing slash.
+        if (!Files.TryGetValue("index.html", out var name)) return null;
+        using var reader = new StreamReader(Assembly.GetManifestResourceStream(name)!, Encoding.UTF8);
+        return reader.ReadToEnd();
+    });
+
+    public static bool IsAvailable => IndexHtml.Value is not null;
+
+    /// <summary>The dashboard root. Redirects to the trailing-slash form so relative asset URLs resolve.</summary>
+    public static IResult Index(HttpContext http, SlowcookerAdminOptions options)
+    {
         var path = http.Request.Path.Value ?? "";
         if (!path.EndsWith('/'))
             return Results.Redirect(http.Request.PathBase + path + "/" + http.Request.QueryString, permanent: false);
+        return Page(http, options);
+    }
 
-        if (!IsAvailable)
+    /// <summary>
+    /// A file from the build, or, for a path without an extension (a client-side route such as <c>jobs/123</c>),
+    /// the page itself so deep links work. Unknown API paths and unknown files are 404.
+    /// </summary>
+    public static IResult Asset(HttpContext http, SlowcookerAdminOptions options, string path)
+    {
+        if (Files.ContainsKey(path))
+        {
+            // Vite fingerprints everything under assets/, so those can be cached forever.
+            http.Response.Headers.CacheControl = path.StartsWith("assets/", StringComparison.Ordinal)
+                ? "public, max-age=31536000, immutable"
+                : "no-cache";
+            return Results.Stream(Assembly.GetManifestResourceStream(Files[path])!, ContentTypes.TryGetContentType(path, out var type) ? type : "application/octet-stream");
+        }
+
+        var isRoute = !path.StartsWith("api/", StringComparison.Ordinal) && !Path.HasExtension(path.AsSpan().TrimEnd('/'));
+        return isRoute ? Page(http, options) : Results.NotFound();
+    }
+
+    private static IResult Page(HttpContext http, SlowcookerAdminOptions options)
+    {
+        var html = IndexHtml.Value;
+        if (html is null)
         {
             return Results.Text(
                 "The Slowcooker dashboard was not compiled into this build of Slowcooker.AspNetCore. " +
@@ -37,21 +69,14 @@ internal static class EmbeddedDashboard
                 statusCode: StatusCodes.Status404NotFound);
         }
 
+        // The page is served for every client-side route, so assets and API calls must resolve against the mount
+        // point rather than the current URL. Mounted automatically, PathBase already includes the dashboard path;
+        // mapped explicitly, it does not.
+        var pathBase = http.Request.PathBase.Value ?? "";
+        var mount = pathBase.EndsWith(options.Path, StringComparison.OrdinalIgnoreCase) ? pathBase : pathBase + options.Path;
+        var withBase = html.Replace("<head>", $"<head><base href=\"{mount}/\">", StringComparison.OrdinalIgnoreCase);
+
         http.Response.Headers.CacheControl = "no-cache";
-        return File("index.html", "text/html; charset=utf-8");
+        return Results.Content(withBase, "text/html; charset=utf-8");
     }
-
-    public static IResult Asset(HttpContext http, string path)
-    {
-        if (!Files.ContainsKey(path)) return Results.NotFound();
-
-        // Vite fingerprints everything under assets/, so those can be cached forever.
-        http.Response.Headers.CacheControl = path.StartsWith("assets/", StringComparison.Ordinal)
-            ? "public, max-age=31536000, immutable"
-            : "no-cache";
-        return File(path, ContentTypes.TryGetContentType(path, out var type) ? type : "application/octet-stream");
-    }
-
-    private static IResult File(string path, string contentType)
-        => Results.Stream(Assembly.GetManifestResourceStream(Files[path])!, contentType);
 }
