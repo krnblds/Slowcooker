@@ -2,13 +2,13 @@
   "name": "slowcooker-dashboard",
   "private": true,
   "type": "module",
-  "description": "Workspace for @slowcooker/vue (the component kit) and the admin app bundled with Slowcooker.AspNetCore",
+  "description": "Workspace for the Vue component kit (kit/, source only) and the admin app compiled into Slowcooker.AspNetCore (admin/)",
   "workspaces": [
     "kit",
     "admin"
   ],
   "scripts": {
-    "build": "npm run build --workspaces",
+    "build": "npm run build -w admin",
     "dev": "npm run dev -w admin",
     "typecheck": "npm run typecheck --workspaces",
     "test": "npm test -w kit"
