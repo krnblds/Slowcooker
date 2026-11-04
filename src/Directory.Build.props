@@ -1,12 +1,18 @@
 <Project>
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- Everything under src/ ships as a NuGet package with XML docs, the README and the icon. -->
   <PropertyGroup>
     <IsPackable>true</IsPackable>
-    <VersionPrefix>0.1.0</VersionPrefix>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <!-- CS1591: not every public member needs an XML comment. -->
+    <!-- Public members without a doc comment are allowed; the docs folder is the reference. -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Description>Slowcooker: a small, async-first background job library for .NET with pluggable storage.</Description>
+    <!-- Default description; packages override it in their csproj. -->
+    <Description>Slowcooker: typed background jobs for .NET with Postgres, Redis or in-memory storage, retries, cron schedules and a bundled dashboard.</Description>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)../README.md" Pack="true" PackagePath="/" Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)../docs/assets/icon.png" Pack="true" PackagePath="/" Visible="false" />
+  </ItemGroup>
 </Project>
