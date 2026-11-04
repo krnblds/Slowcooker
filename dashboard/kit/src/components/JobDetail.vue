@@ -18,7 +18,7 @@ const emit = defineEmits<{ requeue: [job: Job]; delete: [job: Job]; close: [] }>
           <button v-if="!readonly" type="button" class="sc-btn" :disabled="job.state === 'processing'" @click="emit('requeue', job)">Requeue</button>
           <button v-if="!readonly" type="button" class="sc-btn sc-btn--danger" @click="emit('delete', job)">Delete</button>
         </slot>
-        <button type="button" class="sc-btn sc-btn--ghost" @click="emit('close')">Close</button>
+        <button type="button" class="sc-btn sc-btn--ghost" aria-label="Close" @click="emit('close')">Close</button>
       </div>
     </header>
 

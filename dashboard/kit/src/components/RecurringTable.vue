@@ -13,11 +13,11 @@ const emit = defineEmits<{ select: [job: RecurringJob]; trigger: [job: Recurring
     </thead>
     <tbody>
       <tr v-for="r in items" :key="r.id" class="sc-row--clickable" @click="emit('select', r)">
-        <td><code>{{ r.id }}</code></td>
+        <td><span class="sc-job__name">{{ r.id }}</span></td>
         <td>{{ r.displayName }}</td>
-        <td><code>{{ r.cron }}</code></td>
+        <td><span class="sc-chip">{{ r.cron }}</span></td>
         <td>{{ r.timeZoneId }}</td>
-        <td><code>{{ r.queue }}</code></td>
+        <td><span class="sc-chip">{{ r.queue }}</span></td>
         <td><RelativeTime v-if="r.nextRunAt" :value="r.nextRunAt" :now="now" /><span v-else class="sc-badge sc-badge--parked">parked</span></td>
         <td><RelativeTime :value="r.lastRunAt" :now="now" /></td>
         <td v-if="!readonly" class="sc-actions" @click.stop>
@@ -27,7 +27,7 @@ const emit = defineEmits<{ select: [job: RecurringJob]; trigger: [job: Recurring
           </slot>
         </td>
       </tr>
-      <tr v-if="items.length === 0"><td colspan="8" class="sc-muted">No recurring jobs.</td></tr>
+      <tr v-if="items.length === 0"><td colspan="8"><div class="sc-empty"><span class="sc-empty__title">No recurring jobs</span><span>Declare schedules in code with IRecurringJobClient.AddOrUpdateAsync.</span></div></td></tr>
     </tbody>
   </table>
 </template>
