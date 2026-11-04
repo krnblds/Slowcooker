@@ -26,8 +26,12 @@ jobs:
         run: npm test
       - name: Restore
         run: dotnet restore
+      - name: Format
+        run: dotnet format --no-restore --verify-no-changes
       - name: Build
         run: dotnet build --no-restore --configuration Release -p:SkipDashboardBuild=true
+      - name: Pack
+        run: dotnet pack Slowcooker.sln --no-build --configuration Release -p:SkipDashboardBuild=true -o artifacts
       # Postgres and Redis suites start their own containers through Testcontainers (Docker is available on ubuntu runners).
       - name: Test
         run: dotnet test --no-build --configuration Release --solution Slowcooker.sln
