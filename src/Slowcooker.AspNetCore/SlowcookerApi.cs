@@ -24,6 +24,14 @@ public static class SlowcookerApi
         DefaultIgnoreCondition = JsonIgnoreCondition.Never,
     };
 
+    /// <summary>
+    /// Header every <c>POST</c> and <c>DELETE</c> must carry (any non-empty value). A browser only sends a custom header
+    /// cross-origin after a CORS preflight that this API does not answer, so a page on another site cannot requeue or
+    /// delete jobs through a visitor's browser, including against the local-only default and cookie authentication.
+    /// The kit's client sends it on every request; scripts and tools add it themselves.
+    /// </summary>
+    public const string RequestHeader = "X-Slowcooker-Request";
+
     private static readonly string Version = typeof(IJobClient).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
         ?? typeof(IJobClient).Assembly.GetName().Version?.ToString() ?? "unknown";
 
@@ -45,6 +53,8 @@ public static class SlowcookerApi
 
     internal static void MapEndpoints(RouteGroupBuilder group)
     {
+        group.AddEndpointFilter(new RequestHeaderFilter());
+
         group.MapGet("/info", (IJobStorage storage, TimeProvider time) =>
             Json(new InfoDto(Version, storage.GetType().Name, time.GetUtcNow())));
 
@@ -142,6 +152,21 @@ public static class SlowcookerApi
     private static IResult Json<T>(T value, int statusCode = 200) => Results.Json(value, JsonOptions, statusCode: statusCode);
 
     private static IResult NotFound(string kind, string id) => Json(new ErrorDto($"No {kind} with id '{id}'."), 404);
+
+    /// <summary>Rejects state-changing requests without <see cref="RequestHeader"/>. See there for why.</summary>
+    internal sealed class RequestHeaderFilter : IEndpointFilter
+    {
+        public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
+        {
+            var request = context.HttpContext.Request;
+            if (HttpMethods.IsGet(request.Method) || HttpMethods.IsHead(request.Method) || HttpMethods.IsOptions(request.Method))
+                return await next(context);
+            if (!string.IsNullOrEmpty(request.Headers[RequestHeader]))
+                return await next(context);
+
+            return Json(new ErrorDto($"State-changing requests must send the {RequestHeader} header (any value). It protects the API from cross-site requests."), 403);
+        }
+    }
 
     /// <summary>
     /// Mirrors Hangfire's local-requests-only default: unauthenticated remote access to an API that can delete and

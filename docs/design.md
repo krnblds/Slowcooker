@@ -76,6 +76,8 @@ Tests: `Graceful_shutdown_cancels_running_jobs_and_requeues_them_without_burning
 
 The API can delete and requeue jobs. By default it only answers local requests; it opens up only when the endpoints carry authorization metadata or when you set `AllowUnauthenticatedRemoteAccess` explicitly. The bundled UI sits behind the same rule. It is mounted *after* the application's pipeline so that forwarded-headers and authentication middleware have run before the local-or-authorized check. Tests: `Remote_requests_are_refused_by_default`, `Remote_requests_are_allowed_when_the_endpoints_require_authorization`, and the same pair in `SlowcookerAdminUserInterfaceTests`.
 
+The local-only rule trusts the machine, and cookie authentication trusts the browser, so on their own neither stops a page on another site from posting a form to `http://localhost:5000/slowcooker/api/jobs/{id}/requeue` in a developer's browser. Every `POST` and `DELETE` therefore requires an `X-Slowcooker-Request` header. A cross-origin page cannot add a custom header without a CORS preflight, and the API answers none, so the forged request never arrives with it. Test: `State_changing_requests_without_the_request_header_are_refused`.
+
 ## What was kept from Hangfire
 
 Reading Hangfire's source (`Worker.cs`, `AutomaticRetryAttribute.cs`, `RecurringJobScheduler.cs`, `Hangfire.PostgreSql`'s `PostgreSqlJobQueue.cs`, `InvocationData.cs`) shaped several decisions:

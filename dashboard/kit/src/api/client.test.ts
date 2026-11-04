@@ -45,6 +45,13 @@ describe("createClient", () => {
     expect(calls[0].init.method).toBe("DELETE");
     expect(calls[1].url.pathname).toBe("/slowcooker/api/recurring/nightly%20report/trigger");
     expect(calls[1].init.method).toBe("POST");
+    for (const call of calls) expect(new Headers(call.init.headers).get("x-slowcooker-request")).toBe("1");
+  });
+
+  it("passes the name filter through to /jobs", async () => {
+    const { fetch, calls } = fakeFetch(200, { items: [], total: 0, skip: 0, take: 50 });
+    await createClient({ fetch }).jobs({ name: "generate-daily-report", state: null });
+    expect([...calls[0].url.searchParams]).toEqual([["name", "generate-daily-report"]]);
   });
 
   it("sends the headers you give it, resolving a function each time", async () => {

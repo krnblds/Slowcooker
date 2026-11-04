@@ -29,14 +29,14 @@ styles.css        default styling via CSS variables (light + dark)
 
 ## API client
 
-`createClient(options)` returns an object with one method per endpoint. All methods return promises of the types in `api/types.ts`; failures throw `SlowcookerApiError { status, message, url }`. Options: `baseUrl` (default `/slowcooker/api`), `headers` (object or function, sync or async), `fetch` (for tests and SSR).
+`createClient(options)` returns an object with one method per endpoint. All methods return promises of the types in `api/types.ts`; failures throw `SlowcookerApiError { status, message, url }`. Options: `baseUrl` (default `/slowcooker/api`), `headers` (object or function, sync or async), `fetch` (for tests and SSR). Every request carries the `X-Slowcooker-Request` header the API requires on `POST` and `DELETE`.
 
 | Method | Endpoint | Returns |
 |---|---|---|
 | `info()` | `GET /info` | `Info` (version, storage, serverTime) |
 | `stats()` | `GET /stats` | `Stats` (counts, per-queue counts, serverTime) |
 | `queues()` | `GET /queues` | `QueueStats[]` |
-| `jobs({ state, queue, skip, take })` | `GET /jobs` | `Page<Job>` newest first |
+| `jobs({ state, queue, name, skip, take })` | `GET /jobs` | `Page<Job>` newest first; `name` is an exact job name |
 | `job(id)` | `GET /jobs/{id}` | `Job` |
 | `requeue(id)` | `POST /jobs/{id}/requeue` | `Job` (409 while processing) |
 | `deleteJob(id)` | `DELETE /jobs/{id}` | `void` |
