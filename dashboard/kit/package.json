@@ -1,7 +1,8 @@
 {
   "name": "@slowcooker/vue",
   "version": "0.1.0",
-  "description": "Vue 3 component kit for the Slowcooker background-job dashboard API: typed client, polling composables, tables and detail views",
+  "private": true,
+  "description": "Vue 3 component kit for the Slowcooker background-job dashboard API: typed client, polling composables, tables and detail views. Source only; copy it or reference it from this repository",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
@@ -12,8 +13,8 @@
     "./styles.css": "./styles.css"
   },
   "scripts": {
-    "build": "vue-tsc -p tsconfig.json --noEmit",
-    "typecheck": "vue-tsc -p tsconfig.json --noEmit"
+    "typecheck": "vue-tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
   },
   "peerDependencies": {
     "vue": "^3.4.0"
