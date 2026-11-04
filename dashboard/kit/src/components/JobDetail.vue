@@ -5,7 +5,7 @@ import PayloadView from "./PayloadView.vue";
 import RelativeTime from "./RelativeTime.vue";
 import StateBadge from "./StateBadge.vue";
 
-defineProps<{ job: Job; now?: string | null; readonly?: boolean }>();
+withDefaults(defineProps<{ job: Job; now?: string | null; readonly?: boolean; /** Show the Close button (off when the host provides its own, e.g. a drawer). */ closable?: boolean }>(), { closable: true });
 const emit = defineEmits<{ requeue: [job: Job]; delete: [job: Job]; close: [] }>();
 </script>
 
@@ -18,7 +18,7 @@ const emit = defineEmits<{ requeue: [job: Job]; delete: [job: Job]; close: [] }>
           <button v-if="!readonly" type="button" class="sc-btn" :disabled="job.state === 'processing'" @click="emit('requeue', job)">Requeue</button>
           <button v-if="!readonly" type="button" class="sc-btn sc-btn--danger" @click="emit('delete', job)">Delete</button>
         </slot>
-        <button type="button" class="sc-btn sc-btn--ghost" aria-label="Close" @click="emit('close')">Close</button>
+        <button v-if="closable" type="button" class="sc-btn sc-btn--ghost" aria-label="Close" @click="emit('close')">Close</button>
       </div>
     </header>
 

@@ -22,8 +22,8 @@ const emit = defineEmits<{ select: [job: RecurringJob]; trigger: [job: Recurring
         <td><RelativeTime :value="r.lastRunAt" :now="now" /></td>
         <td v-if="!readonly" class="sc-actions" @click.stop>
           <slot name="actions" :job="r">
-            <button type="button" class="sc-btn" @click="emit('trigger', r)">Run now</button>
-            <button type="button" class="sc-btn sc-btn--danger" @click="emit('delete', r)">Delete</button>
+            <button type="button" class="sc-btn sc-btn--sm" @click="emit('trigger', r)">Run now</button>
+            <button type="button" class="sc-btn sc-btn--sm sc-btn--danger" @click="emit('delete', r)">Delete</button>
           </slot>
         </td>
       </tr>

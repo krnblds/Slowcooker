@@ -259,6 +259,7 @@ pre code { padding: 0; background: none; font-size: inherit; color: inherit; }
 
 /* ---------- Tables ---------- */
 
+.sc-table-wrap { overflow-x: auto; }
 .sc-table { width: 100%; border-collapse: collapse; font-size: var(--sc-text-base); }
 .sc-table th, .sc-table td { padding: 0.65rem 0.875rem; text-align: left; vertical-align: middle; border-bottom: 1px solid var(--sc-border); }
 .sc-table th {

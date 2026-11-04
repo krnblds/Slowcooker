@@ -1,55 +1,68 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import { createClient, provideSlowcooker, useStats, usePolling, ErrorBanner, StatsBar } from "@slowcooker/vue";
-import JobsView from "./JobsView.vue";
-import OverviewView from "./OverviewView.vue";
-import RecurringView from "./RecurringView.vue";
+import { computed } from "vue";
+import { RouterLink, RouterView } from "vue-router";
+import { provideSlowcooker, usePolling } from "@slowcooker/vue";
+import { api } from "./client";
+import { provideSharedStats } from "./stats";
+import { useTheme } from "./theme";
+import ConfirmDialog from "./components/ConfirmDialog.vue";
+import Icon from "./components/Icon.vue";
+import Toasts from "./components/Toasts.vue";
 
-// AddAdminUserInterface() serves this page at {Path}/ and the API at {Path}/api, so the API is found relative to the page
-// and the dashboard works at any mount path. Browser cookies travel with the requests, so no auth header is needed here.
-// In your own app: createClient({ baseUrl: "/slowcooker/api", headers: () => ({ Authorization: `Bearer ${token}` }) }).
-const api = createClient({ baseUrl: new URL("api", document.baseURI).pathname });
 provideSlowcooker(api);
+const stats = provideSharedStats(api);
+const info = usePolling(() => api.info(), { intervalMs: 60_000 });
+const { theme, cycle } = useTheme();
 
-const stats = useStats({ client: api, intervalMs: 2000 });
-const info = usePolling(() => api.info(), { intervalMs: 0 });
-
-type Tab = "overview" | "jobs" | "recurring";
-const tab = ref<Tab>("overview");
-const jobsView = ref<InstanceType<typeof JobsView>>();
-
-function showState(state: "scheduled" | "processing" | "succeeded" | "failed") {
-  tab.value = "jobs";
-  queueMicrotask(() => jobsView.value?.filterByState(state));
-}
-function showQueue(queue: string) {
-  tab.value = "jobs";
-  queueMicrotask(() => jobsView.value?.filterByQueue(queue));
-}
-
-const serverTime = computed(() => stats.data.value?.serverTime ?? null);
+const themeIcon = computed(() => ({ system: "system", light: "sun", dark: "moon" })[theme.value]);
+const themeLabel = computed(() => `Theme: ${theme.value}. Click to change`);
+const connected = computed(() => !stats.error.value && stats.data.value !== undefined);
 </script>
 
 <template>
-  <div class="demo">
-    <header class="demo__header">
-      <h1>Slowcooker</h1>
-      <span class="sc-muted">
-        <template v-if="info.data.value">v{{ info.data.value.version }} · {{ info.data.value.storage }}</template>
-      </span>
-    </header>
+  <div class="app">
+    <aside class="sidebar">
+      <RouterLink to="/" class="brand">
+        <span class="brand__mark"><Icon name="logo" :size="18" /></span>
+        <span class="brand__name">Slowcooker</span>
+      </RouterLink>
 
-    <ErrorBanner :error="stats.error.value" />
-    <StatsBar :stats="stats.data.value" :loading="stats.loading.value" @select="showState" />
+      <nav class="nav" aria-label="Main">
+        <RouterLink to="/" class="nav__link" exact-active-class="nav__link--active"><Icon name="overview" /><span>Overview</span></RouterLink>
+        <RouterLink to="/jobs" class="nav__link" active-class="nav__link--active">
+          <Icon name="jobs" /><span>Jobs</span>
+          <span v-if="stats.data.value?.failed" class="nav__count nav__count--failed">{{ stats.data.value.failed }}</span>
+        </RouterLink>
+        <RouterLink to="/recurring" class="nav__link" active-class="nav__link--active">
+          <Icon name="recurring" /><span>Recurring</span>
+          <span v-if="stats.data.value?.recurring" class="nav__count">{{ stats.data.value.recurring }}</span>
+        </RouterLink>
+      </nav>
 
-    <nav class="demo__tabs">
-      <button class="demo__tab" :class="{ 'demo__tab--active': tab === 'overview' }" @click="tab = 'overview'">Overview</button>
-      <button class="demo__tab" :class="{ 'demo__tab--active': tab === 'jobs' }" @click="tab = 'jobs'">Jobs</button>
-      <button class="demo__tab" :class="{ 'demo__tab--active': tab === 'recurring' }" @click="tab = 'recurring'">Recurring</button>
-    </nav>
+      <div class="sidebar__footer">
+        <div class="status" :class="connected ? 'status--ok' : 'status--bad'">
+          <span class="status__dot" />
+          <span v-if="connected">Connected</span>
+          <span v-else-if="stats.error.value" :title="stats.error.value.message">Disconnected</span>
+          <span v-else>Connecting…</span>
+        </div>
+        <div class="sidebar__meta">
+          <span v-if="info.data.value" class="sc-truncate" :title="`${info.data.value.storage} · ${info.data.value.version}`">
+            {{ info.data.value.storage.replace(/JobStorage$/, "") }} · v{{ info.data.value.version.split("+")[0] }}
+          </span>
+          <span v-else class="sc-skeleton" />
+          <button type="button" class="sc-btn sc-btn--ghost sc-btn--icon sc-btn--sm theme-toggle" :title="themeLabel" :aria-label="themeLabel" @click="cycle">
+            <Icon :name="themeIcon" />
+          </button>
+        </div>
+      </div>
+    </aside>
 
-    <OverviewView v-if="tab === 'overview'" :stats="stats.data.value" @select-queue="showQueue" />
-    <JobsView v-else-if="tab === 'jobs'" ref="jobsView" :now="serverTime" />
-    <RecurringView v-else :now="serverTime" />
+    <main class="main">
+      <RouterView />
+    </main>
+
+    <Toasts />
+    <ConfirmDialog />
   </div>
 </template>
