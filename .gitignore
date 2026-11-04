@@ -484,4 +484,4 @@ $RECYCLE.BIN/
 # Slowcooker
 dashboard/node_modules/
 dashboard/dist/
-samples/Slowcooker.Samples.WebApi/wwwroot/dashboard/
+src/Slowcooker.AspNetCore/ui/

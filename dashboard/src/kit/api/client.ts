@@ -12,7 +12,7 @@ export class SlowcookerApiError extends Error {
 }
 
 export interface ClientOptions {
-  /** Where `MapSlowcookerApi` was mounted. Default "/slowcooker". */
+  /** Where the API is mounted: `{Path}/api` for `AddAdminUserInterface()`, or the prefix given to `MapSlowcookerApi`. Default "/slowcooker/api". */
   baseUrl?: string;
   /** Extra headers, e.g. an Authorization header. Can be a function for tokens that rotate. */
   headers?: HeadersInit | (() => HeadersInit | Promise<HeadersInit>);
@@ -23,12 +23,12 @@ export interface ClientOptions {
 /**
  * A typed client for every endpoint of the dashboard API. One method per endpoint; errors become `SlowcookerApiError`.
  *
- *   const api = createClient({ baseUrl: "/slowcooker" });
+ *   const api = createClient({ baseUrl: "/slowcooker/api" });
  *   const failed = await api.jobs({ state: "failed", take: 100 });
  *   await api.requeue(failed.items[0].id);
  */
 export function createClient(options: ClientOptions = {}) {
-  const base = (options.baseUrl ?? "/slowcooker").replace(/\/$/, "");
+  const base = (options.baseUrl ?? "/slowcooker/api").replace(/\/$/, "");
   const doFetch = options.fetch ?? globalThis.fetch.bind(globalThis);
 
   async function request<T>(method: string, path: string, query?: Record<string, string | number | null | undefined>): Promise<T> {

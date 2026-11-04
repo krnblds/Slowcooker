@@ -2,7 +2,9 @@
 
   <PropertyGroup>
     <PackageId>Slowcooker.AspNetCore</PackageId>
-    <Description>HTTP API for Slowcooker: the backend for a job dashboard.</Description>
+    <Description>Dashboard for Slowcooker: a bundled admin UI (AddAdminUserInterface) and the HTTP API behind it.</Description>
+    <DashboardSource>$(MSBuildProjectDirectory)/../../dashboard</DashboardSource>
+    <DashboardOutput>$(MSBuildProjectDirectory)/ui</DashboardOutput>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,5 +14,26 @@
   <ItemGroup>
     <ProjectReference Include="..\Slowcooker\Slowcooker.csproj" />
   </ItemGroup>
+
+  <!--
+    The Vue dashboard (../../dashboard) is compiled into ui/ and embedded in this assembly as "ui/<path>" resources, so the
+    package carries the finished UI and consumers need neither Node nor static files. The first build runs the npm build
+    when ui/index.html is missing and Node is installed; after changing the dashboard run `npm run build` in dashboard/.
+    Skip the npm step with -p:SkipDashboardBuild=true (CI builds the dashboard as its own step).
+  -->
+  <Target Name="BuildDashboard" BeforeTargets="BeforeBuild" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec Command="npm ci --no-audit --no-fund &amp;&amp; npm run build" WorkingDirectory="$(DashboardSource)" ContinueOnError="true"
+          Condition="'$(SkipDashboardBuild)' != 'true' AND !Exists('$(DashboardOutput)/index.html') AND Exists('$(DashboardSource)/package-lock.json')" />
+    <Warning Text="Dashboard not found at $(DashboardOutput); AddAdminUserInterface() will serve an explanatory 404 until it is built." Condition="!Exists('$(DashboardOutput)/index.html')" />
+    <ItemGroup>
+      <DashboardFile Include="$(DashboardOutput)/**" />
+      <EmbeddedResource Include="@(DashboardFile)" LogicalName="ui/%(RecursiveDir)%(Filename)%(Extension)" />
+    </ItemGroup>
+  </Target>
+
+  <!-- A package without the UI is broken for consumers, so packing refuses rather than warns. -->
+  <Target Name="RequireDashboardForPack" BeforeTargets="GenerateNuspec">
+    <Error Text="Cannot pack Slowcooker.AspNetCore without the compiled dashboard. Run `npm run build` in dashboard/ first." Condition="!Exists('$(DashboardOutput)/index.html')" />
+  </Target>
 
 </Project>
