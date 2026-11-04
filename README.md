@@ -1,6 +1,20 @@
-# Slowcooker
+<p align="center">
+  <img src="docs/assets/logo.svg" alt="" width="88" height="88">
+</p>
 
-Background jobs for .NET that are **data, not lambdas**. You describe work as a record, write a handler for it, and Slowcooker runs it reliably on Postgres, Redis or in memory, with retries, cron schedules, a bundled dashboard and the HTTP API behind it.
+<h1 align="center">Slowcooker</h1>
+
+<p align="center">
+  Background jobs for .NET that are <strong>data, not lambdas</strong>.<br>
+  Typed jobs, reliable workers, cron schedules and a bundled dashboard, on Postgres, Redis or in memory.
+</p>
+
+<p align="center">
+  <a href="https://github.com/krnblds/Slowcooker/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/krnblds/Slowcooker/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://www.nuget.org/packages/Slowcooker"><img alt="NuGet" src="https://img.shields.io/nuget/v/Slowcooker?logo=nuget&label=NuGet"></a>
+  <img alt=".NET 10" src="https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet">
+  <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-green"></a>
+</p>
 
 ```csharp
 [JobName("send-welcome-email")]
@@ -18,44 +32,36 @@ public sealed class SendWelcomeEmailHandler(IMailer mailer) : IJobHandler<SendWe
 await jobs.EnqueueAsync(new SendWelcomeEmail("ada@example.com", "Ada"));
 ```
 
-[![CI](https://github.com/krnblds/Slowcooker/actions/workflows/ci.yml/badge.svg)](https://github.com/krnblds/Slowcooker/actions/workflows/ci.yml)
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/dashboard-dark.png">
+    <img src="docs/assets/dashboard-light.png" alt="The Slowcooker dashboard: state counters, queues, recent failures and recently completed jobs" width="920">
+  </picture>
+</p>
 
-## Why not Hangfire?
+## Highlights
 
-Hangfire serializes a *method call* captured from a lambda. Slowcooker serializes a *message*. That one change removes a whole class of production problems and makes the rest of the design simpler:
+- **Jobs are records.** A job is a small immutable message with a stable `[JobName]`. Rename classes, move namespaces, change method signatures: nothing in the queue breaks.
+- **Handlers come from DI.** `IJobHandler<TJob>` is resolved from a fresh scope per job. Constructor-inject whatever you need; no activator abstraction.
+- **Built for failure.** Leases with heartbeats instead of invisibility timeouts, attempts counted at fetch time so a crashing job cannot loop forever, exponential backoff with dead-lettering, graceful shutdown that requeues without burning an attempt, idempotency keys on the job itself.
+- **Cron that reads like English.** `Cron.Daily.At(6)`, `Cron.Weekdays.At(18)`, `Cron.Monthly.OnLastDay().At(18, 30)`, with time zones and DST handled. Recurring jobs trigger exactly once across instances with compare-and-set, no distributed locks.
+- **Async end to end.** Workers never block a thread; concurrency is a semaphore. Storage pushes wake-ups (`LISTEN/NOTIFY`, pub/sub); polling is only the fallback.
+- **A dashboard in one line.** `AddAdminUserInterface()` serves a compiled Vue dashboard from inside the package: overview, jobs with filters and requeue/delete, recurring schedules with cron preview, light and dark. Local-only by default, your authorization policy in production.
+- **Three storages, one contract.** PostgreSQL, Redis and in-memory providers all pass the same 40-test contract suite covering concurrent fetch, lease loss and crash recovery.
 
-| | Hangfire | Slowcooker |
-|---|---|---|
-| Unit of work | `BackgroundJob.Enqueue(() => svc.Send(a, b))`: method name, parameter types and argument JSON | `jobs.EnqueueAsync(new SendEmail(a, b))`: a record with a stable name |
-| Refactoring | Renaming a method or changing a parameter breaks queued jobs | Rename anything; `[JobName]` is the contract. Payloads are plain JSON records |
-| Execution model | Thread-per-worker, synchronous `Task.Wait` | Async end to end; concurrency is a semaphore, not a thread pool |
-| Storage round-trips per job | Several: fetch queue row, change state (with history), load parameters, update counters | One to fetch (in batches), one to settle. One row per job, no history tables |
-| Waiting for work | Polling (SQL Server), long-polling in some providers | Push: Postgres `LISTEN/NOTIFY`, Redis pub/sub, in-process signal. Polling is only the fallback |
-| Crash recovery | Invisibility timeout | Leases with heartbeats. A lost lease cancels the job's token; a slow worker can never overwrite the new owner's state |
-| Duplicate creation | Not built in | `IdempotencyKey` on the job itself |
-| Recurring jobs across servers | Distributed locks | Compare-and-set on `NextRunAt`: no locks, exactly one instance wins |
-| Dashboard | Bundled UI | Bundled UI too (`AddAdminUserInterface()`), on a JSON API with a safe-by-default access rule you can also use alone |
-| Dependencies | Newtonsoft.Json, Owin/ASP.NET glue | `System.Text.Json`, `Microsoft.Extensions.*`, Cronos |
+## Install
 
-The rest of this file is the user guide. [`docs/design.md`](docs/design.md) explains how the failure modes of background processing are handled and tested; [`docs/dashboard-api.md`](docs/dashboard-api.md) is the HTTP reference; [`docs/storage.md`](docs/storage.md) covers the providers and the storage contract.
+```bash
+dotnet add package Slowcooker
+dotnet add package Slowcooker.Storage.Postgres     # or Slowcooker.Storage.Redis / Slowcooker.Storage.InMemory
+dotnet add package Slowcooker.AspNetCore           # the dashboard, optional
+```
 
-## Packages
-
-| Project | What it is |
-|---|---|
-| `Slowcooker` | Core: jobs, handlers, client, worker, recurring scheduler, retry policy |
-| `Slowcooker.Storage.Postgres` | PostgreSQL storage (Npgsql). Recommended for production |
-| `Slowcooker.Storage.Redis` | Redis storage (StackExchange.Redis), every operation a single Lua script |
-| `Slowcooker.Storage.InMemory` | Process-local storage for tests and development |
-| `Slowcooker.AspNetCore` | The dashboard: bundled UI (`.AddAdminUserInterface()`) and its HTTP API (`app.MapSlowcookerApi()` on its own) |
-| `dashboard/kit` | Vue 3 component kit for building your own dashboard on the API: typed client, polling composables, tables and detail views. Source to copy, not an npm package |
-| `dashboard/admin` | The bundled UI, built on the kit and compiled into `Slowcooker.AspNetCore` |
-
-Targets .NET 10. Not on NuGet yet; reference the projects directly or `dotnet pack` them. The dashboard is inside the `Slowcooker.AspNetCore` package, so nothing but NuGet is needed to use it.
+Targets .NET 10. The dashboard is compiled into `Slowcooker.AspNetCore`, so nothing but NuGet is needed to use it.
 
 ## Quick start
 
-**1. Register it.** A storage, your handlers, and a worker in processes that should run jobs.
+**1. Register it.** A storage, your handlers, a worker in processes that should run jobs, and the dashboard.
 
 ```csharp
 builder.Services.AddSlowcooker()
@@ -65,7 +71,8 @@ builder.Services.AddSlowcooker()
     {
         o.Queues = ["email", "default"];
         o.MaxConcurrency = 8;
-    });
+    })
+    .AddAdminUserInterface(ui => ui.RequireAuthorization("ops"));          // /slowcooker/ and its API at /slowcooker/api
 ```
 
 A web API that only *creates* jobs omits `AddWorker()`. Workers and clients can live in different processes and scale independently.
@@ -111,19 +118,35 @@ await recurring.TriggerAsync("daily-report");   // run it now, schedule untouche
 await recurring.RemoveAsync("daily-report");
 ```
 
-`Cron` is a small value type you can read: `Cron.Weekly.On(DayOfWeek.Monday, DayOfWeek.Thursday).At(9)`, `Cron.Weekdays.At(18)`, `Cron.Hourly.AtMinute(45)`, `Cron.Yearly.InMonth(12).OnDay(25)`, `Cron.Never` (pause without deleting). It converts implicitly to the expression string, and `Cron.Parse("0 3 * * sun")` takes any five-field (minute) or six-field (seconds) expression. `cron.Upcoming(now, zone, 5)` previews the next runs, and the dashboard API exposes the same as `GET /cron/preview`. Daylight-saving transitions are handled by [Cronos](https://github.com/HangfireIO/Cronos).
+`Cron` is a small value type you can read: `Cron.Weekly.On(DayOfWeek.Monday, DayOfWeek.Thursday).At(9)`, `Cron.Weekdays.At(18)`, `Cron.Hourly.AtMinute(45)`, `Cron.Yearly.InMonth(12).OnDay(25)`, `Cron.Never` (pause without deleting). It converts implicitly to the expression string, and `Cron.Parse("0 3 * * sun")` takes any five-field (minute) or six-field (seconds) expression. `cron.Upcoming(now, zone, 5)` previews the next runs, and the dashboard exposes the same as `GET /cron/preview`. Daylight-saving transitions are handled by [Cronos](https://github.com/HangfireIO/Cronos).
 
-**5. Dashboard.**
+## The dashboard
+
+<p align="center">
+  <img src="docs/assets/dashboard-jobs-dark.png" alt="The jobs page: state and queue filters, paging, and one row per job with its state, attempt, timing and the first line of the last error" width="920">
+</p>
 
 ```csharp
 builder.Services.AddSlowcooker()
     .UsePostgres(connectionString)
-    .AddAdminUserInterface(ui => ui.RequireAuthorization("ops"));   // dashboard at /slowcooker/, its API at /slowcooker/api
+    .AddAdminUserInterface(ui =>
+    {
+        ui.Path = "/jobs";                   // default /slowcooker
+        ui.RequireAuthorization("ops");      // any ASP.NET Core policy; required for anything reachable from the internet
+    });
 ```
 
-That is the whole setup: the UI is compiled into `Slowcooker.AspNetCore` and mounted for you after your own middleware, so nothing else goes in `Program.cs`. `ui.Path` moves it. Without `RequireAuthorization` it answers local requests only, because the API can requeue and delete jobs. If your app has a catch-all route (a SPA fallback), call `app.MapSlowcookerAdminUserInterface()` explicitly so the dashboard takes precedence.
+That is the whole setup. The UI is compiled into `Slowcooker.AspNetCore` and mounted after your own middleware, so authentication and forwarded headers have already run. Without `RequireAuthorization` it answers requests from the local machine only, because the API can requeue and delete jobs. If your app has a catch-all route (a SPA fallback), call `app.MapSlowcookerAdminUserInterface()` explicitly so the dashboard takes precedence.
 
-Building your own UI instead? `app.MapSlowcookerApi("/slowcooker").RequireAuthorization("ops")` mounts just the JSON API; [`docs/dashboard-api.md`](docs/dashboard-api.md) lists the endpoints, and [`dashboard/kit`](dashboard/kit/README.md) is a Vue 3 component kit on top of it (typed client, polling composables, tables and detail views) that the bundled UI is itself built from.
+What it gives you:
+
+| Page | What you can do |
+|---|---|
+| Overview | State counters, per-queue counts, recent failures and completions, server time and storage |
+| Jobs | Filter by state and queue, page through, open a job by id, inspect payload and full error, requeue or delete. Filters live in the URL, so a view is a link you can share |
+| Recurring | Every schedule with next and last run, run one now, delete, cron scratchpad with presets and time zones |
+
+Building your own UI? `app.MapSlowcookerApi("/slowcooker")` mounts just the JSON API ([reference](docs/dashboard-api.md)), and [`dashboard/kit`](dashboard/kit/README.md) is the Vue 3 component kit the bundled UI is built from: typed client, polling composables, tables and detail views.
 
 ## Concepts
 
@@ -139,7 +162,7 @@ Building your own UI instead? `app.MapSlowcookerApi("/slowcooker").RequireAuthor
 
 **States.** `Scheduled` (waiting, due at `RunAt`) → `Processing` (leased to a worker) → `Succeeded` or `Failed`. Retries go back to `Scheduled` with a later `RunAt`. That is the whole state machine.
 
-**Retries.** `IRetryPolicy.GetRetryDelay(attempt, exception)` returns a delay or `null` to give up. The default `ExponentialBackoffRetryPolicy` does 10 attempts with Hangfire's curve `(attempt-1)^4 + 15 + jitter` seconds (about two hours in total) and honours a `DoNotRetry` list. Exhausted jobs are `Failed`, kept for `FailedJobRetention` (7 days) and can be requeued from the API.
+**Retries.** `IRetryPolicy.GetRetryDelay(attempt, exception)` returns a delay or `null` to give up. The default `ExponentialBackoffRetryPolicy` does 10 attempts with the curve `(attempt-1)^4 + 15 + jitter` seconds (about two hours in total) and honours a `DoNotRetry` list. Exhausted jobs are `Failed`, kept for `FailedJobRetention` (7 days) and can be requeued from the dashboard.
 
 **Leases.** Fetching a job leases it for `LeaseDuration` (5 minutes). The worker extends the lease every third of that while the job runs. If the process dies, the lease expires and another worker fetches the job with `Attempt + 1`. Attempts are counted at fetch time, so a job that crashes the process cannot loop forever.
 
@@ -169,13 +192,46 @@ Building your own UI instead? `app.MapSlowcookerApi("/slowcooker").RequireAuthor
 
 | Provider | Fetch | Wake-up | Notes |
 |---|---|---|---|
-| Postgres | `UPDATE … FROM (SELECT … FOR UPDATE SKIP LOCKED) RETURNING` | `LISTEN/NOTIFY` | Schema auto-created (or apply `PostgresJobStorage.SchemaSql` yourself). Creating jobs inside a `TransactionScope` makes them visible only on commit |
+| Postgres | `UPDATE … FROM (SELECT … FOR UPDATE SKIP LOCKED) RETURNING` | `LISTEN/NOTIFY` | Schema auto-created (or apply `PostgresJobStorage.SchemaSql` yourself). Creating jobs inside a `TransactionScope` makes them visible only on commit. Recommended for production |
 | Redis | Lua script over sorted sets | pub/sub | One script per operation; use a `{hash-tag}` prefix on Cluster |
-| In-memory | dictionary under a lock | in-process signal | Nothing survives a restart |
+| In-memory | dictionary under a lock | in-process signal | Nothing survives a restart; for tests and development |
 
-All three pass the same 40-test contract suite (`tests/Slowcooker.Storage.ContractTests`), which includes concurrent-fetch, lease-loss and crash-recovery scenarios. Details and the schema are in [`docs/storage.md`](docs/storage.md).
+All three pass the same contract suite (`tests/Slowcooker.Storage.ContractTests`), which includes concurrent-fetch, lease-loss and crash-recovery scenarios. Details and the schema are in [`docs/storage.md`](docs/storage.md).
 
-## Running the sample and the tests
+## Compared with Hangfire
+
+Hangfire serializes a *method call* captured from a lambda. Slowcooker serializes a *message*. That one change removes a whole class of production problems and makes the rest of the design simpler:
+
+| | Hangfire | Slowcooker |
+|---|---|---|
+| Unit of work | `BackgroundJob.Enqueue(() => svc.Send(a, b))`: method name, parameter types and argument JSON | `jobs.EnqueueAsync(new SendEmail(a, b))`: a record with a stable name |
+| Refactoring | Renaming a method or changing a parameter breaks queued jobs | Rename anything; `[JobName]` is the contract. Payloads are plain JSON records |
+| Execution model | Thread-per-worker, synchronous `Task.Wait` | Async end to end; concurrency is a semaphore, not a thread pool |
+| Storage round-trips per job | Several: fetch queue row, change state (with history), load parameters, update counters | One to fetch (in batches), one to settle. One row per job, no history tables |
+| Waiting for work | Polling (SQL Server), long-polling in some providers | Push: Postgres `LISTEN/NOTIFY`, Redis pub/sub, in-process signal. Polling is only the fallback |
+| Crash recovery | Invisibility timeout | Leases with heartbeats. A lost lease cancels the job's token; a slow worker can never overwrite the new owner's state |
+| Duplicate creation | Not built in | `IdempotencyKey` on the job itself |
+| Recurring jobs across servers | Distributed locks | Compare-and-set on `NextRunAt`: no locks, exactly one instance wins |
+| Dashboard | Bundled UI | Bundled UI (`AddAdminUserInterface()`) on a JSON API with a safe-by-default access rule you can also use alone |
+| Dependencies | Newtonsoft.Json, Owin/ASP.NET glue | `System.Text.Json`, `Microsoft.Extensions.*`, Cronos |
+
+[`docs/design.md`](docs/design.md) explains how the failure modes of background processing are handled and tested.
+
+## Repository
+
+| Path | What it is |
+|---|---|
+| `src/Slowcooker` | Core: jobs, handlers, client, worker, recurring scheduler, retry policy |
+| `src/Slowcooker.Storage.Postgres` | PostgreSQL storage (Npgsql) |
+| `src/Slowcooker.Storage.Redis` | Redis storage (StackExchange.Redis), every operation a single Lua script |
+| `src/Slowcooker.Storage.InMemory` | Process-local storage for tests and development |
+| `src/Slowcooker.AspNetCore` | The dashboard: bundled UI (`.AddAdminUserInterface()`) and its HTTP API (`app.MapSlowcookerApi()` on its own) |
+| `dashboard/kit` | Vue 3 component kit for building your own dashboard on the API. Source to copy, not an npm package |
+| `dashboard/admin` | The bundled UI, built on the kit and compiled into `Slowcooker.AspNetCore` |
+| `samples/Slowcooker.Samples.WebApi` | A web API with handlers, recurring jobs, demo traffic and the dashboard |
+| `docs/` | [Design notes](docs/design.md), [dashboard API](docs/dashboard-api.md), [storage](docs/storage.md) |
+
+### Running the sample and the tests
 
 ```bash
 dotnet run --project samples/Slowcooker.Samples.WebApi   # in-memory storage, demo traffic, dashboard at http://localhost:5000/slowcooker/
@@ -192,12 +248,15 @@ The first build of `Slowcooker.AspNetCore` runs `npm ci && npm run build` in `da
 dotnet test --solution Slowcooker.sln                  # needs Docker: the Postgres and Redis suites start containers via Testcontainers
 SLOWCOOKER_TEST_POSTGRES='Host=…' dotnet test …        # or point them at servers you already have
 SLOWCOOKER_TEST_REDIS='localhost:6379' dotnet test …
+cd dashboard && npm test                               # the component kit
 ```
 
-## Status
+## Status and roadmap
 
-0.1: the API is young and may still change. Everything described here is implemented and covered by tests. Not yet done: batches and continuations with dependencies, per-job retry attributes, OpenTelemetry metrics, and the bundled dashboard is functional rather than pretty.
+0.1: everything described here is implemented and covered by tests; the public API may still change before 1.0. Planned next: batches and continuations with dependencies, per-job retry attributes, OpenTelemetry metrics and traces, rate limiting and mutexes per job type.
+
+Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Releases are cut from version tags and published to NuGet by CI.
 
 ## License
 
-MIT.
+[MIT](LICENSE).
