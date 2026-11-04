@@ -9,11 +9,11 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -33,7 +33,7 @@ jobs:
       # Try-out packages for every CI run (version 0.x.y-ci.N), downloadable from the run's summary page.
       - name: Pack
         run: dotnet pack Slowcooker.sln --no-build --configuration Release -p:SkipDashboardBuild=true -p:VersionSuffix=ci.${{ github.run_number }} -o artifacts
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: packages
           path: artifacts/*.nupkg
