@@ -1,6 +1,9 @@
 import { createApp } from "vue";
-import App from "./App.vue";
 import "@slowcooker/vue/styles.css";
-import "./demo.css";
+import "./app.css";
+import App from "./App.vue";
+import { router } from "./router";
+import { applyStoredTheme } from "./theme";
 
-createApp(App).mount("#app");
+applyStoredTheme();
+createApp(App).use(router).mount("#app");

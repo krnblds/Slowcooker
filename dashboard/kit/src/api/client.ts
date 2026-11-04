@@ -58,6 +58,9 @@ export function createClient(options: ClientOptions = {}) {
   }
 
   return {
+    /** The resolved base path, without a trailing slash. */
+    baseUrl: base,
+
     /** Library version, storage provider and server clock. */
     info: () => request<Info>("GET", "/info"),
 

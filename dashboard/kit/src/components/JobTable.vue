@@ -47,8 +47,8 @@ const emit = defineEmits<{ select: [job: Job]; requeue: [job: Job]; delete: [job
         <td><RelativeTime :value="job.createdAt" :now="now" /></td>
         <td v-if="!readonly" class="sc-actions" @click.stop>
           <slot name="actions" :job="job">
-            <button type="button" class="sc-btn" :disabled="job.state === 'processing'" @click="emit('requeue', job)">Requeue</button>
-            <button type="button" class="sc-btn sc-btn--danger" @click="emit('delete', job)">Delete</button>
+            <button type="button" class="sc-btn sc-btn--sm" :disabled="job.state === 'processing'" @click="emit('requeue', job)">Requeue</button>
+            <button type="button" class="sc-btn sc-btn--sm sc-btn--danger" @click="emit('delete', job)">Delete</button>
           </slot>
         </td>
       </tr>
