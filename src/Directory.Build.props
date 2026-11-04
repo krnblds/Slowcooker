@@ -1,0 +1,11 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- CS1591: not every public member needs an XML comment. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Description>Slowcooker: a small, async-first background job library for .NET with pluggable storage.</Description>
+  </PropertyGroup>
+</Project>

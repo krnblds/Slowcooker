@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Slowcooker.Storage.Redis\Slowcooker.Storage.Redis.csproj" />
+    <ProjectReference Include="..\Slowcooker.Storage.ContractTests\Slowcooker.Storage.ContractTests.csproj" />
+    <PackageReference Include="Testcontainers.Redis" />
+  </ItemGroup>
+
+</Project>

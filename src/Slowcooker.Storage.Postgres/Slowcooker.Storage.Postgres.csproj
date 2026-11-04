@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Slowcooker.Storage.Postgres</PackageId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Slowcooker\Slowcooker.csproj" />
+    <PackageReference Include="Npgsql" />
+  </ItemGroup>
+
+</Project>

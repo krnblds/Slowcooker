@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Slowcooker\Slowcooker.csproj" />
+    <ProjectReference Include="..\..\src\Slowcooker.Storage.InMemory\Slowcooker.Storage.InMemory.csproj" />
+    <ProjectReference Include="..\..\src\Slowcooker.AspNetCore\Slowcooker.AspNetCore.csproj" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+  </ItemGroup>
+
+</Project>

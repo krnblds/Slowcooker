@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Slowcooker.Storage.Postgres\Slowcooker.Storage.Postgres.csproj" />
+    <ProjectReference Include="..\Slowcooker.Storage.ContractTests\Slowcooker.Storage.ContractTests.csproj" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+  </ItemGroup>
+
+</Project>

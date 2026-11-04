@@ -1,0 +1,25 @@
+@host = http://localhost:5000
+
+### Enqueue a welcome email (idempotent per address)
+POST {{host}}/signups
+Content-Type: application/json
+
+{ "email": "ada@example.com", "name": "Ada" }
+
+### One that fails twice and then succeeds (watch the retries in the dashboard API)
+POST {{host}}/signups
+Content-Type: application/json
+
+{ "email": "grace@flaky.example", "name": "Grace" }
+
+### Dashboard API
+GET {{host}}/slowcooker/stats
+
+###
+GET {{host}}/slowcooker/jobs?state=failed&take=20
+
+###
+GET {{host}}/slowcooker/recurring
+
+###
+POST {{host}}/slowcooker/recurring/daily-report-eu/trigger
