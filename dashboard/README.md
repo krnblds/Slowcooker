@@ -1,6 +1,6 @@
 # Slowcooker dashboard kit
 
-A Vue 3 + TypeScript kit for building a dashboard on the [Slowcooker HTTP API](../docs/dashboard-api.md), plus a small demo admin app built with it. The kit is deliberately **unopinionated about looks**: semantic markup, `sc-` CSS classes, a handful of CSS variables. Bring your own design system, or start from `src/styles/kit.css`.
+The source of the dashboard that `AddAdminUserInterface()` serves, written as a Vue 3 + TypeScript kit for building your own on the [Slowcooker HTTP API](../docs/dashboard-api.md), plus the small admin app built with it that ships in `Slowcooker.AspNetCore`. The kit is deliberately **unopinionated about looks**: semantic markup, `sc-` CSS classes, a handful of CSS variables. Bring your own design system, or start from `src/styles/kit.css`.
 
 ```
 dashboard/
@@ -9,20 +9,20 @@ dashboard/
     composables/          polling, jobs, job, recurring, cron preview, provide/inject
     components/           StatsBar, JobTable, JobDetail, RecurringTable, CronPreview, …
     format.ts             relative time / JSON helpers
-  src/demo/             ← the demo admin app (App.vue + three views)
+  src/demo/             ← the bundled admin app (App.vue + three views)
   src/styles/kit.css    ← default styling via CSS variables (light + dark)
 ```
 
 ## Run it
 
 ```bash
-# terminal 1: the demo server (in-memory storage, generates demo traffic, serves the built dashboard)
+# terminal 1: the demo server (in-memory storage, generates demo traffic, serves the embedded dashboard at /slowcooker/)
 dotnet run --project samples/Slowcooker.Samples.WebApi
-# terminal 2: the dashboard with hot reload, proxying /slowcooker to the server
-cd dashboard && npm install && npm run dev        # http://localhost:5173/dashboard/
+# terminal 2: the dashboard with hot reload, proxying /api to the server's /slowcooker/api
+cd dashboard && npm install && npm run dev        # http://localhost:5173/
 ```
 
-`npm run build` type-checks (`vue-tsc`) and writes the production build to `samples/Slowcooker.Samples.WebApi/wwwroot/dashboard`, where the sample serves it at `http://localhost:5000/dashboard/`. The sample's first `dotnet build` runs that for you when Node is installed.
+`npm run build` type-checks (`vue-tsc`) and writes the production build to `src/Slowcooker.AspNetCore/ui/`, which that project embeds in its assembly (as `ui/...` resources) so the NuGet package carries the finished UI. The first `dotnet build` of `Slowcooker.AspNetCore` runs the npm build for you when Node is installed; after changing the dashboard, run `npm run build` again and rebuild. The build uses a relative `base` and finds the API at `./api`, so the server can mount it at any path.
 
 Against real storage: `docker compose up -d` then `dotnet run --project samples/Slowcooker.Samples.WebApi -- --Slowcooker:Storage=Postgres` (or `Redis`).
 
@@ -34,7 +34,7 @@ Copy `src/kit` into your project (it only depends on `vue`), then:
 // main.ts / App.vue
 import { createClient, provideSlowcooker } from "@/kit";
 const api = createClient({
-  baseUrl: "/slowcooker",                                   // where MapSlowcookerApi() is mounted
+  baseUrl: "/slowcooker/api",                               // {Path}/api of AddAdminUserInterface(), or where MapSlowcookerApi() is mounted
   headers: () => ({ Authorization: `Bearer ${getToken()}` }) // whatever your RequireAuthorization() policy needs
 });
 provideSlowcooker(api);   // in a root component's setup()
