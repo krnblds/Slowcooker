@@ -33,16 +33,14 @@ The admin app imports the kit's source through the workspace link (hot reload, n
 
 ## The admin app
 
-`admin/src` is a small, conventional Vue app: `router.ts` (web history on the server's `<base href>`), `App.vue` (sidebar shell, shared `/stats` poll, theme toggle), three pages under `pages/`, and `components/` for the drawer, confirm dialog, toasts, page header and icons. Styling is `kit/styles.css` for everything the kit renders plus `admin/src/app.css` for the shell. `?theme=light|dark|system` on any URL overrides the stored theme (useful for screenshots).
+`admin/src` is a small, conventional Vue app: `router.ts` (web history on the server's `<base href>`), `App.vue` (sidebar shell, shared `/stats` poll, offline banner, failed count in the tab title), four pages under `pages/` (overview, jobs, recurring, cron tester), and `components/` for the drawer, command palette, settings menu, confirm dialog, toasts, sparkline, queue bar, page header and icons. `settings.ts` holds per-browser display preferences (time zone, live updates) in localStorage; `live.ts` pauses every poll while live updates are off; `stats.ts` keeps the session's `/stats` samples for the sparklines. Styling is `kit/styles.css` for everything the kit renders plus `admin/src/app.css` for the shell. `?theme=light|dark|system` on any URL overrides the stored theme (useful for screenshots).
 
 Ideas not done yet, roughly in order of value:
 
-1. **Trend lines** on the overview (sample `/stats` client-side and chart the last few minutes) and a "due in the next minute" count.
-2. **Bulk actions**: multi-select with requeue/delete by calling the per-job endpoints in sequence (there is no bulk endpoint on purpose).
-3. **Keyboard navigation** in the job list (j/k, Enter to open, Esc already closes the drawer).
-4. **A friendlier error view**: split the .NET exception string into type, message and frames, and collapse the stack by default.
-5. **Auth plumbing** for hosts that use tokens rather than cookies: `createClient({ headers })`, redirect on `401/403` from `SlowcookerApiError`, and `readonly` tables for viewers.
-6. **Creating schedules from the UI** needs a write endpoint in your own app that calls `IRecurringJobClient.AddOrUpdateAsync` with your job types; the dashboard API deliberately does not let a browser enqueue arbitrary jobs.
-7. **Component tests for the pages**; the kit's tests show the pattern (`kit/src/**/*.test.ts`, `createClient({ fetch: mockFetch })`).
+1. **A "due in the next minute" count** on the overview. It needs a count of scheduled jobs by `runAt`, which `/stats` does not return yet.
+2. **Bulk actions beyond one page.** Selection covers the visible page and calls the per-job endpoints a few at a time; "requeue every failed job" across thousands would want a server-side endpoint.
+3. **Auth plumbing** for hosts that use tokens rather than cookies: `createClient({ headers })`, redirect on `401/403` from `SlowcookerApiError`, and `readonly` tables for viewers.
+4. **Creating schedules from the UI** needs a write endpoint in your own app that calls `IRecurringJobClient.AddOrUpdateAsync` with your job types; the dashboard API deliberately does not let a browser enqueue arbitrary jobs.
+5. **Component tests for the pages**; the kit's tests show the pattern (`kit/src/**/*.test.ts`, `createClient({ fetch: mockFetch })`).
 
 Not needed: anything server-side for reading. Every read the dashboard could want is already an endpoint, and `IJobMonitor` is there if you need a custom one.
