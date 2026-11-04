@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { createClient, provideSlowcooker, useStats, usePolling, ErrorBanner, StatsBar } from "@kit";
+import { createClient, provideSlowcooker, useStats, usePolling, ErrorBanner, StatsBar } from "@slowcooker/vue";
 import JobsView from "./JobsView.vue";
 import OverviewView from "./OverviewView.vue";
 import RecurringView from "./RecurringView.vue";
