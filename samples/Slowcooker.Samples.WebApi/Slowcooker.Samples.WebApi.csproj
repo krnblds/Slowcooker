@@ -12,4 +12,12 @@
     <ProjectReference Include="..\..\src\Slowcooker.Storage.Redis\Slowcooker.Storage.Redis.csproj" />
   </ItemGroup>
 
+  <!--
+    Builds the Vue dashboard (../../dashboard) into wwwroot/dashboard on the first build when Node is installed.
+    Skip with -p:SkipDashboardBuild=true. Rebuild the dashboard explicitly with `npm run build` in dashboard/.
+  -->
+  <Target Name="BuildDashboard" BeforeTargets="Build" Condition="'$(SkipDashboardBuild)' != 'true' AND !Exists('$(MSBuildProjectDirectory)/wwwroot/dashboard/index.html')">
+    <Exec Command="npm ci --no-audit --no-fund &amp;&amp; npm run build" WorkingDirectory="$(MSBuildProjectDirectory)/../../dashboard" ContinueOnError="true" Condition="Exists('$(MSBuildProjectDirectory)/../../dashboard/package-lock.json')" />
+  </Target>
+
 </Project>

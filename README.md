@@ -48,6 +48,7 @@ The rest of this file is the user guide. [`docs/design.md`](docs/design.md) expl
 | `Slowcooker.Storage.Redis` | Redis storage (StackExchange.Redis), every operation a single Lua script |
 | `Slowcooker.Storage.InMemory` | Process-local storage for tests and development |
 | `Slowcooker.AspNetCore` | The dashboard HTTP API (`app.MapSlowcookerApi()`) |
+| `dashboard/` | Vue 3 + TypeScript dashboard kit and demo admin app (not a NuGet package) |
 
 Targets .NET 10. Not on NuGet yet; reference the projects directly or `dotnet pack` them.
 
@@ -111,13 +112,13 @@ await recurring.RemoveAsync("daily-report");
 
 `Cron` is a small value type you can read: `Cron.Weekly.On(DayOfWeek.Monday, DayOfWeek.Thursday).At(9)`, `Cron.Weekdays.At(18)`, `Cron.Hourly.AtMinute(45)`, `Cron.Yearly.InMonth(12).OnDay(25)`, `Cron.Never` (pause without deleting). It converts implicitly to the expression string, and `Cron.Parse("0 3 * * sun")` takes any five-field (minute) or six-field (seconds) expression. `cron.Upcoming(now, zone, 5)` previews the next runs, and the dashboard API exposes the same as `GET /cron/preview`. Daylight-saving transitions are handled by [Cronos](https://github.com/HangfireIO/Cronos).
 
-**5. Dashboard API.**
+**5. Dashboard API and UI kit.**
 
 ```csharp
 app.MapSlowcookerApi("/slowcooker").RequireAuthorization("ops");
 ```
 
-Without `RequireAuthorization` the API answers local requests only. See [`docs/dashboard-api.md`](docs/dashboard-api.md).
+Without `RequireAuthorization` the API answers local requests only. See [`docs/dashboard-api.md`](docs/dashboard-api.md) for the endpoints, and [`dashboard/`](dashboard/README.md) for a Vue 3 component kit (typed client, polling composables, tables and detail views) with a working demo admin app that the sample server hosts at `/dashboard/`.
 
 ## Concepts
 
@@ -172,11 +173,15 @@ All three pass the same 40-test contract suite (`tests/Slowcooker.Storage.Contra
 ## Running the sample and the tests
 
 ```bash
-docker compose up -d                                   # Postgres + Redis for the sample (optional)
-dotnet run --project samples/Slowcooker.Samples.WebApi -- --Slowcooker:Storage=Postgres
+dotnet run --project samples/Slowcooker.Samples.WebApi   # in-memory storage, demo traffic, dashboard at http://localhost:5000/dashboard/
 curl -X POST localhost:5000/signups -H 'content-type: application/json' -d '{"email":"ada@example.com","name":"Ada"}'
 curl localhost:5000/slowcooker/stats
+
+docker compose up -d                                     # Postgres + Redis, then:
+dotnet run --project samples/Slowcooker.Samples.WebApi -- --Slowcooker:Storage=Postgres
 ```
+
+The sample's first build runs `npm ci && npm run build` in `dashboard/` when Node is installed (skip with `-p:SkipDashboardBuild=true`). In Development it also generates demo traffic; turn that off with `--Slowcooker:DemoTraffic=false`.
 
 ```bash
 dotnet test --solution Slowcooker.sln                  # needs Docker: the Postgres and Redis suites start containers via Testcontainers

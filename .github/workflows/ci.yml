@@ -13,10 +13,18 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - name: Build dashboard
+        working-directory: dashboard
+        run: npm ci && npm run build
       - name: Restore
         run: dotnet restore
       - name: Build
-        run: dotnet build --no-restore --configuration Release
+        run: dotnet build --no-restore --configuration Release -p:SkipDashboardBuild=true
       # Postgres and Redis suites start their own containers through Testcontainers (Docker is available on ubuntu runners).
       - name: Test
         run: dotnet test --no-build --configuration Release --solution Slowcooker.sln
