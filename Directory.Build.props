@@ -8,8 +8,13 @@
     <AnalysisLevel>latest</AnalysisLevel>
     <IsPackable>false</IsPackable>
 
-    <!-- Version of every package. Releases pass -p:Version=x.y.z from the git tag (see .github/workflows/release.yml). -->
+    <!--
+      Version of every package. Releases pass -p:Version=x.y.z[-suffix] (see .github/workflows/release.yml); CI passes
+      -p:VersionSuffix=ci.N. Anything else is a local build and is marked as such, so a stray `dotnet pack` can never
+      produce something that looks like a release.
+    -->
     <VersionPrefix>0.1.0</VersionPrefix>
+    <VersionSuffix Condition="'$(VersionSuffix)' == '' and '$(Version)' == ''">dev</VersionSuffix>
 
     <Authors>Slowcooker contributors</Authors>
     <Product>Slowcooker</Product>

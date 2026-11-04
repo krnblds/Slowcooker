@@ -1,21 +1,62 @@
 name: Release
 
-# Tag a commit vX.Y.Z and push the tag: the packages are built from the tag, pushed to NuGet and attached to a
-# GitHub release with generated notes. Needs a NUGET_API_KEY repository secret.
+# Two ways to publish:
+#
+#   git tag v0.2.0 && git push origin v0.2.0                  stable release
+#   git tag v0.2.0-beta.1 && git push origin v0.2.0-beta.1    prerelease (beta, preview, rc, ...)
+#
+# or run the workflow by hand (Actions > Release > Run workflow) with a version such as 0.2.0-preview.3 from any
+# branch: it tags that commit and publishes the same way. Anything with a SemVer suffix is pushed to NuGet as a
+# prerelease (hidden unless --prerelease is used) and the GitHub release is marked pre-release.
+# Needs a NUGET_API_KEY secret; the "nuget" environment can require reviewers before the push.
+
 on:
   push:
-    tags: ["v*.*.*"]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish, e.g. 0.2.0-preview.1 (no leading v)"
+        required: true
+        type: string
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: nuget
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Resolve version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            version="$INPUT_VERSION"
+          else
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$'; then
+            echo "::error::'$version' is not a SemVer 2 version like 1.2.3 or 1.2.3-beta.1"
+            exit 1
+          fi
+          case "$version" in
+            *-*) prerelease=true ;;
+            *)   prerelease=false ;;
+          esac
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "PRERELEASE=$prerelease" >> "$GITHUB_ENV"
+          echo "Publishing $version (prerelease: $prerelease)"
+
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
@@ -24,9 +65,6 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: dashboard/package-lock.json
-
-      - name: Version from tag
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
 
       - name: Build dashboard
         working-directory: dashboard
@@ -44,5 +82,8 @@ jobs:
       - name: GitHub release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ env.VERSION }}
+          name: v${{ env.VERSION }}
+          prerelease: ${{ env.PRERELEASE }}
           files: artifacts/*
           generate_release_notes: true
