@@ -1,11 +1,10 @@
 using Slowcooker;
-using Slowcooker.AspNetCore;
 using Slowcooker.Samples.WebApi.Jobs;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 
-// 1. Register Slowcooker: a storage, your handlers, and (in this process) a worker.
+// 1. Register Slowcooker: a storage, your handlers, (in this process) a worker, and the dashboard.
 var slowcooker = builder.Services.AddSlowcooker()
     .AddHandlersFrom(typeof(Program).Assembly)
     .AddWorker(o =>
@@ -13,7 +12,10 @@ var slowcooker = builder.Services.AddSlowcooker()
         o.Queues = ["email", "default"];
         o.MaxConcurrency = 8;
         o.SucceededJobRetention = TimeSpan.FromMinutes(30); // keep the demo tidy
-    });
+    })
+    // The bundled UI at /slowcooker/ with its JSON API at /slowcooker/api. Local requests only, unless you add
+    // ui => ui.RequireAuthorization("ops") (and the authentication to go with it).
+    .AddAdminUserInterface();
 
 // Storage is chosen by configuration so the sample runs with nothing installed (in-memory) or against docker-compose.
 switch (builder.Configuration["Slowcooker:Storage"]?.ToLowerInvariant())
@@ -39,29 +41,22 @@ if (builder.Configuration.GetValue("Slowcooker:DemoTraffic", builder.Environment
 var app = builder.Build();
 if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
-// 2. Mount the dashboard API. Local requests only, unless you add .RequireAuthorization().
-app.MapSlowcookerApi("/slowcooker");
+app.MapGet("/", () => Results.Redirect("/slowcooker/"));
 
-// 3. Serve the built Vue dashboard (dashboard/ -> wwwroot/dashboard, see dashboard/README.md).
-app.UseDefaultFiles();
-app.UseStaticFiles();
-app.MapFallbackToFile("/dashboard/{*path}", "dashboard/index.html");
-app.MapGet("/", () => Results.Redirect("/dashboard/"));
-
-// 4. Enqueue jobs from anywhere you can inject IJobClient.
+// 2. Enqueue jobs from anywhere you can inject IJobClient.
 app.MapPost("/signups", async (Signup signup, IJobClient jobs) =>
 {
     var jobId = await jobs.EnqueueAsync(new SendWelcomeEmail(signup.Email, signup.Name));
-    return Results.Accepted($"/slowcooker/jobs/{jobId}", new { jobId });
+    return Results.Accepted($"/slowcooker/api/jobs/{jobId}", new { jobId });
 });
 
 app.MapPost("/signups/later", async (Signup signup, IJobClient jobs) =>
 {
     var jobId = await jobs.ScheduleAsync(new SendWelcomeEmail(signup.Email, signup.Name), TimeSpan.FromMinutes(1));
-    return Results.Accepted($"/slowcooker/jobs/{jobId}", new { jobId });
+    return Results.Accepted($"/slowcooker/api/jobs/{jobId}", new { jobId });
 });
 
-// 5. Recurring jobs: a Cron schedule + time zone, declared once at startup. Safe to run on every instance.
+// 3. Recurring jobs: a Cron schedule + time zone, declared once at startup. Safe to run on every instance.
 using (var scope = app.Services.CreateScope())
 {
     var recurring = scope.ServiceProvider.GetRequiredService<IRecurringJobClient>();

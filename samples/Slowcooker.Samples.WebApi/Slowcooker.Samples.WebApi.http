@@ -13,13 +13,13 @@ Content-Type: application/json
 { "email": "grace@flaky.example", "name": "Grace" }
 
 ### Dashboard API
-GET {{host}}/slowcooker/stats
+GET {{host}}/slowcooker/api/stats
 
 ###
-GET {{host}}/slowcooker/jobs?state=failed&take=20
+GET {{host}}/slowcooker/api/jobs?state=failed&take=20
 
 ###
-GET {{host}}/slowcooker/recurring
+GET {{host}}/slowcooker/api/recurring
 
 ###
-POST {{host}}/slowcooker/recurring/daily-report-eu/trigger
+POST {{host}}/slowcooker/api/recurring/daily-report-eu/trigger
