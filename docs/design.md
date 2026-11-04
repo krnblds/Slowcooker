@@ -74,7 +74,7 @@ Tests: `Graceful_shutdown_cancels_running_jobs_and_requeues_them_without_burning
 
 ### The dashboard as an attack surface
 
-The API can delete and requeue jobs. By default it only answers local requests; it opens up only when the endpoints carry authorization metadata or when you set `AllowUnauthenticatedRemoteAccess` explicitly. Tests: `Remote_requests_are_refused_by_default`, `Remote_requests_are_allowed_when_the_endpoints_require_authorization`.
+The API can delete and requeue jobs. By default it only answers local requests; it opens up only when the endpoints carry authorization metadata or when you set `AllowUnauthenticatedRemoteAccess` explicitly. The bundled UI sits behind the same rule. It is mounted *after* the application's pipeline so that forwarded-headers and authentication middleware have run before the local-or-authorized check. Tests: `Remote_requests_are_refused_by_default`, `Remote_requests_are_allowed_when_the_endpoints_require_authorization`, and the same pair in `SlowcookerAdminUserInterfaceTests`.
 
 ## What was kept from Hangfire
 

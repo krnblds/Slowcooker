@@ -1,10 +1,13 @@
 # Dashboard API
 
-`Slowcooker.AspNetCore` exposes the monitoring and operator surface of Slowcooker as a small JSON API. It is the backend for whatever dashboard you build: a React page, a Blazor component, a CLI, a Grafana panel. The core library has no opinion about the UI.
+`Slowcooker.AspNetCore` exposes the monitoring and operator surface of Slowcooker as a small JSON API. The bundled dashboard is built on it, and it is equally the backend for whatever else you build: a React page, a Blazor component, a CLI, a Grafana panel.
 
 ```csharp
-using Slowcooker.AspNetCore;
+// With the bundled dashboard: the API is served under it at {Path}/api, default /slowcooker/api.
+builder.Services.AddSlowcooker().AddAdminUserInterface(ui => ui.RequireAuthorization("ops"));
 
+// On its own, for your own UI:
+using Slowcooker.AspNetCore;
 var api = app.MapSlowcookerApi("/slowcooker");   // returns a RouteGroupBuilder
 api.RequireAuthorization("ops");                  // strongly recommended
 ```
@@ -14,7 +17,7 @@ api.RequireAuthorization("ops");                  // strongly recommended
 The API can requeue and delete jobs, so it refuses remote callers unless you opt in. The rule, evaluated per request:
 
 1. If `SlowcookerApiOptions.AllowUnauthenticatedRemoteAccess` is `true`: allowed.
-2. If the endpoint carries authorization metadata (`RequireAuthorization(...)` on the group) and no `AllowAnonymous`: allowed, and ASP.NET Core's authorization middleware decides.
+2. If the endpoint carries authorization metadata (`RequireAuthorization(...)` on the group, or on the `AddAdminUserInterface()` options) and no `AllowAnonymous`: allowed, and ASP.NET Core's authorization middleware decides.
 3. If the request comes from the same machine (loopback or the server's own address): allowed.
 4. Otherwise `403` with an explanatory JSON error.
 

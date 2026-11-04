@@ -1,6 +1,6 @@
 # Slowcooker
 
-Background jobs for .NET that are **data, not lambdas**. You describe work as a record, write a handler for it, and Slowcooker runs it reliably on Postgres, Redis or in memory, with retries, cron schedules and an HTTP API for your own dashboard.
+Background jobs for .NET that are **data, not lambdas**. You describe work as a record, write a handler for it, and Slowcooker runs it reliably on Postgres, Redis or in memory, with retries, cron schedules, a bundled dashboard and the HTTP API behind it.
 
 ```csharp
 [JobName("send-welcome-email")]
@@ -34,7 +34,7 @@ Hangfire serializes a *method call* captured from a lambda. Slowcooker serialize
 | Crash recovery | Invisibility timeout | Leases with heartbeats. A lost lease cancels the job's token; a slow worker can never overwrite the new owner's state |
 | Duplicate creation | Not built in | `IdempotencyKey` on the job itself |
 | Recurring jobs across servers | Distributed locks | Compare-and-set on `NextRunAt`: no locks, exactly one instance wins |
-| Dashboard | Bundled UI | JSON API with a safe-by-default access rule; build the UI you want |
+| Dashboard | Bundled UI | Bundled UI too (`AddAdminUserInterface()`), on a JSON API with a safe-by-default access rule you can also use alone |
 | Dependencies | Newtonsoft.Json, Owin/ASP.NET glue | `System.Text.Json`, `Microsoft.Extensions.*`, Cronos |
 
 The rest of this file is the user guide. [`docs/design.md`](docs/design.md) explains how the failure modes of background processing are handled and tested; [`docs/dashboard-api.md`](docs/dashboard-api.md) is the HTTP reference; [`docs/storage.md`](docs/storage.md) covers the providers and the storage contract.
@@ -47,8 +47,8 @@ The rest of this file is the user guide. [`docs/design.md`](docs/design.md) expl
 | `Slowcooker.Storage.Postgres` | PostgreSQL storage (Npgsql). Recommended for production |
 | `Slowcooker.Storage.Redis` | Redis storage (StackExchange.Redis), every operation a single Lua script |
 | `Slowcooker.Storage.InMemory` | Process-local storage for tests and development |
-| `Slowcooker.AspNetCore` | The dashboard HTTP API (`app.MapSlowcookerApi()`) |
-| `dashboard/` | Vue 3 + TypeScript dashboard kit and demo admin app (not a NuGet package) |
+| `Slowcooker.AspNetCore` | The dashboard: bundled UI (`.AddAdminUserInterface()`) and its HTTP API (`app.MapSlowcookerApi()` on its own) |
+| `dashboard/` | Vue 3 + TypeScript source of that UI, usable as a kit for your own (not a NuGet package) |
 
 Targets .NET 10. Not on NuGet yet; reference the projects directly or `dotnet pack` them.
 
@@ -112,13 +112,17 @@ await recurring.RemoveAsync("daily-report");
 
 `Cron` is a small value type you can read: `Cron.Weekly.On(DayOfWeek.Monday, DayOfWeek.Thursday).At(9)`, `Cron.Weekdays.At(18)`, `Cron.Hourly.AtMinute(45)`, `Cron.Yearly.InMonth(12).OnDay(25)`, `Cron.Never` (pause without deleting). It converts implicitly to the expression string, and `Cron.Parse("0 3 * * sun")` takes any five-field (minute) or six-field (seconds) expression. `cron.Upcoming(now, zone, 5)` previews the next runs, and the dashboard API exposes the same as `GET /cron/preview`. Daylight-saving transitions are handled by [Cronos](https://github.com/HangfireIO/Cronos).
 
-**5. Dashboard API and UI kit.**
+**5. Dashboard.**
 
 ```csharp
-app.MapSlowcookerApi("/slowcooker").RequireAuthorization("ops");
+builder.Services.AddSlowcooker()
+    .UsePostgres(connectionString)
+    .AddAdminUserInterface(ui => ui.RequireAuthorization("ops"));   // dashboard at /slowcooker/, its API at /slowcooker/api
 ```
 
-Without `RequireAuthorization` the API answers local requests only. See [`docs/dashboard-api.md`](docs/dashboard-api.md) for the endpoints, and [`dashboard/`](dashboard/README.md) for a Vue 3 component kit (typed client, polling composables, tables and detail views) with a working demo admin app that the sample server hosts at `/dashboard/`.
+That is the whole setup: the UI is compiled into `Slowcooker.AspNetCore` and mounted for you after your own middleware, so nothing else goes in `Program.cs`. `ui.Path` moves it. Without `RequireAuthorization` it answers local requests only, because the API can requeue and delete jobs. If your app has a catch-all route (a SPA fallback), call `app.MapSlowcookerAdminUserInterface()` explicitly so the dashboard takes precedence.
+
+Building your own UI instead? `app.MapSlowcookerApi("/slowcooker").RequireAuthorization("ops")` mounts just the JSON API; [`docs/dashboard-api.md`](docs/dashboard-api.md) lists the endpoints, and [`dashboard/`](dashboard/README.md) is the Vue 3 source of the bundled UI, written as a kit (typed client, polling composables, tables and detail views) you can build on.
 
 ## Concepts
 
@@ -173,15 +177,15 @@ All three pass the same 40-test contract suite (`tests/Slowcooker.Storage.Contra
 ## Running the sample and the tests
 
 ```bash
-dotnet run --project samples/Slowcooker.Samples.WebApi   # in-memory storage, demo traffic, dashboard at http://localhost:5000/dashboard/
+dotnet run --project samples/Slowcooker.Samples.WebApi   # in-memory storage, demo traffic, dashboard at http://localhost:5000/slowcooker/
 curl -X POST localhost:5000/signups -H 'content-type: application/json' -d '{"email":"ada@example.com","name":"Ada"}'
-curl localhost:5000/slowcooker/stats
+curl localhost:5000/slowcooker/api/stats
 
 docker compose up -d                                     # Postgres + Redis, then:
 dotnet run --project samples/Slowcooker.Samples.WebApi -- --Slowcooker:Storage=Postgres
 ```
 
-The sample's first build runs `npm ci && npm run build` in `dashboard/` when Node is installed (skip with `-p:SkipDashboardBuild=true`). In Development it also generates demo traffic; turn that off with `--Slowcooker:DemoTraffic=false`.
+The first build of `Slowcooker.AspNetCore` runs `npm ci && npm run build` in `dashboard/` when Node is installed and embeds the result in the assembly (skip with `-p:SkipDashboardBuild=true`; rerun `npm run build` after changing the dashboard). Consumers of the package never need Node. In Development the sample also generates demo traffic; turn that off with `--Slowcooker:DemoTraffic=false`.
 
 ```bash
 dotnet test --solution Slowcooker.sln                  # needs Docker: the Postgres and Redis suites start containers via Testcontainers
@@ -191,7 +195,7 @@ SLOWCOOKER_TEST_REDIS='localhost:6379' dotnet test …
 
 ## Status
 
-0.1: the API is young and may still change. Everything described here is implemented and covered by tests. Not yet done: a bundled dashboard UI (the API is there for you to build one), batches and continuations with dependencies, per-job retry attributes, OpenTelemetry metrics.
+0.1: the API is young and may still change. Everything described here is implemented and covered by tests. Not yet done: batches and continuations with dependencies, per-job retry attributes, OpenTelemetry metrics, and the bundled dashboard is functional rather than pretty.
 
 ## License
 
