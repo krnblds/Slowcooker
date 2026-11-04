@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://github.com/krnblds/Slowcooker/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/krnblds/Slowcooker/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="https://www.nuget.org/packages/Slowcooker"><img alt="NuGet" src="https://img.shields.io/nuget/v/Slowcooker?logo=nuget&label=NuGet"></a>
+  <a href="https://www.nuget.org/packages/Slowcooker"><img alt="NuGet" src="https://img.shields.io/nuget/vpre/Slowcooker?logo=nuget&label=NuGet"></a>
   <img alt=".NET 10" src="https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet">
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-green"></a>
 </p>
@@ -57,7 +57,7 @@ dotnet add package Slowcooker.Storage.Postgres     # or Slowcooker.Storage.Redis
 dotnet add package Slowcooker.AspNetCore           # the dashboard, optional
 ```
 
-Targets .NET 10. The dashboard is compiled into `Slowcooker.AspNetCore`, so nothing but NuGet is needed to use it.
+Targets .NET 10. The dashboard is compiled into `Slowcooker.AspNetCore`, so nothing but NuGet is needed to use it. Preview builds are published as NuGet prereleases; add `--prerelease` to try them.
 
 ## Quick start
 
@@ -255,7 +255,7 @@ cd dashboard && npm test                               # the component kit
 
 0.1: everything described here is implemented and covered by tests; the public API may still change before 1.0. Planned next: batches and continuations with dependencies, per-job retry attributes, OpenTelemetry metrics and traces, rate limiting and mutexes per job type.
 
-Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Releases are cut from version tags and published to NuGet by CI.
+Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Releases and previews are cut from version tags and published to NuGet by CI.
 
 ## License
 

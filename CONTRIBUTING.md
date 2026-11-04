@@ -12,13 +12,16 @@ Open an issue before a large change so the design can be discussed first.
 
 ## Releasing
 
-Packages are published by `.github/workflows/release.yml` when a version tag is pushed:
+Packages are published by `.github/workflows/release.yml`. Versions are SemVer 2; a suffix makes it a prerelease.
 
 ```bash
-# update CHANGELOG.md, then
-git tag v0.2.0 && git push origin v0.2.0
+# update CHANGELOG.md, then one of:
+git tag v0.2.0-beta.1 && git push origin v0.2.0-beta.1    # beta / preview / rc: NuGet prerelease, GitHub pre-release
+git tag v0.2.0 && git push origin v0.2.0                  # stable
 ```
 
-The workflow runs the tests, packs every project under `src/` with that version, pushes to NuGet (`NUGET_API_KEY` secret) and creates a GitHub release with the packages attached. Between releases `Directory.Build.props` holds the next version as `VersionPrefix`.
+A preview can also be published from any branch without tagging first: Actions > Release > Run workflow, enter a version such as `0.2.0-preview.1`, and the workflow tags that commit. Either way it runs the tests, packs every project under `src/` with that version, pushes to NuGet (`NUGET_API_KEY` secret, optionally gated by reviewers on the `nuget` environment) and creates a GitHub release with the packages attached and generated notes.
+
+Between releases `Directory.Build.props` holds the next version as `VersionPrefix`; local builds are `x.y.z-dev` and CI builds `x.y.z-ci.N` (downloadable from each CI run), so only the workflow produces release-looking versions. Prerelease packages are installed with `dotnet add package Slowcooker --prerelease`.
 
 CI also checks formatting (`dotnet format --verify-no-changes`) and that every package packs; run `dotnet format` before pushing.
