@@ -12,8 +12,9 @@ using Slowcooker.Storage;
 namespace Slowcooker.AspNetCore;
 
 /// <summary>
-/// The HTTP API behind a Slowcooker dashboard. Mount it with <see cref="MapSlowcookerApi"/>; the endpoint reference lives in
-/// <c>docs/dashboard-api.md</c>. It uses its own JSON settings and does not touch your application's.
+/// The HTTP API behind a Slowcooker dashboard. <c>AddAdminUserInterface()</c> serves it under the bundled UI at
+/// <c>{Path}/api</c>; mount it on its own with <see cref="MapSlowcookerApi"/> if you are building your own UI. The endpoint
+/// reference lives in <c>docs/dashboard-api.md</c>. It uses its own JSON settings and does not touch your application's.
 /// </summary>
 public static class SlowcookerApi
 {
@@ -37,8 +38,13 @@ public static class SlowcookerApi
         configure?.Invoke(options);
 
         var group = endpoints.MapGroup(prefix);
-        group.AddEndpointFilter(new AccessFilter(options));
+        group.AddEndpointFilter(new AccessFilter(options.AllowUnauthenticatedRemoteAccess));
+        MapEndpoints(group);
+        return group;
+    }
 
+    internal static void MapEndpoints(RouteGroupBuilder group)
+    {
         group.MapGet("/info", (IJobStorage storage, TimeProvider time) =>
             Json(new InfoDto(Version, storage.GetType().Name, time.GetUtcNow())));
 
@@ -121,8 +127,6 @@ public static class SlowcookerApi
 
             return Json(new CronPreviewDto(cron!.Expression, true, null, zone.Id, cron.Upcoming(time.GetUtcNow(), zone, count)));
         });
-
-        return group;
     }
 
     private static QueueDto ToDto(QueueStats q) => new(q.Name, q.Scheduled, q.Processing, q.Succeeded, q.Failed);
@@ -135,14 +139,14 @@ public static class SlowcookerApi
     /// Mirrors Hangfire's local-requests-only default: unauthenticated remote access to an API that can delete and
     /// requeue jobs is a security hole, so it is off unless explicitly enabled or the endpoint requires authorization.
     /// </summary>
-    private sealed class AccessFilter(SlowcookerApiOptions options) : IEndpointFilter
+    internal sealed class AccessFilter(bool allowUnauthenticatedRemoteAccess) : IEndpointFilter
     {
         public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
         {
-            if (options.AllowUnauthenticatedRemoteAccess || HasAuthorization(context.HttpContext) || IsLocal(context.HttpContext))
+            if (allowUnauthenticatedRemoteAccess || HasAuthorization(context.HttpContext) || IsLocal(context.HttpContext))
                 return await next(context);
 
-            return Json(new ErrorDto("The Slowcooker API only answers local requests unless you add .RequireAuthorization() to MapSlowcookerApi() or set AllowUnauthenticatedRemoteAccess."), 403);
+            return Json(new ErrorDto("Slowcooker only answers local requests unless the endpoints require authorization (RequireAuthorization() on MapSlowcookerApi() or on the AddAdminUserInterface() options) or AllowUnauthenticatedRemoteAccess is set."), 403);
         }
 
         private static bool HasAuthorization(HttpContext http)

@@ -5,9 +5,10 @@ import JobsView from "./JobsView.vue";
 import OverviewView from "./OverviewView.vue";
 import RecurringView from "./RecurringView.vue";
 
-// The API lives on the same origin as this page (served by the sample ASP.NET app), so no auth header is needed here.
-// In your app: createClient({ baseUrl: "/slowcooker", headers: () => ({ Authorization: `Bearer ${token}` }) }).
-const api = createClient({ baseUrl: "/slowcooker" });
+// AddAdminUserInterface() serves this page at {Path}/ and the API at {Path}/api, so the API is found relative to the page
+// and the dashboard works at any mount path. Browser cookies travel with the requests, so no auth header is needed here.
+// In your own app: createClient({ baseUrl: "/slowcooker/api", headers: () => ({ Authorization: `Bearer ${token}` }) }).
+const api = createClient({ baseUrl: new URL("api", document.baseURI).pathname });
 provideSlowcooker(api);
 
 const stats = useStats({ client: api, intervalMs: 2000 });
