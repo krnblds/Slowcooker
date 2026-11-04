@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Slowcooker.AspNetCore</PackageId>
+    <Description>HTTP API for Slowcooker: the backend for a job dashboard.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Slowcooker\Slowcooker.csproj" />
+  </ItemGroup>
+
+</Project>

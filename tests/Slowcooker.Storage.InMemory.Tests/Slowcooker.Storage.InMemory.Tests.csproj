@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Slowcooker.Storage.InMemory\Slowcooker.Storage.InMemory.csproj" />
+    <ProjectReference Include="..\Slowcooker.Storage.ContractTests\Slowcooker.Storage.ContractTests.csproj" />
+  </ItemGroup>
+
+</Project>

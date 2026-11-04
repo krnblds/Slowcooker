@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Slowcooker.Storage.Redis</PackageId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Slowcooker\Slowcooker.csproj" />
+    <PackageReference Include="StackExchange.Redis" />
+  </ItemGroup>
+
+</Project>

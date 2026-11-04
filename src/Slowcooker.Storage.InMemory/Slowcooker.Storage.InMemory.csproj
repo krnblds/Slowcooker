@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Slowcooker.Storage.InMemory</PackageId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Slowcooker\Slowcooker.csproj" />
+  </ItemGroup>
+
+</Project>
