@@ -8,7 +8,14 @@ name: Release
 # or run the workflow by hand (Actions > Release > Run workflow) with a version such as 0.2.0-preview.3 from any
 # branch: it tags that commit and publishes the same way. Anything with a SemVer suffix is pushed to NuGet as a
 # prerelease (hidden unless --prerelease is used) and the GitHub release is marked pre-release.
-# Needs a NUGET_API_KEY secret; the "nuget" environment can require reviewers before the push.
+#
+# Publishing uses NuGet trusted publishing: no API key is stored. GitHub issues an OIDC token for this run, NuGet/login
+# exchanges it for a short-lived key (valid one hour), and nuget.org accepts it only if a trusted publishing policy
+# for this repository, this workflow file and the "nuget" environment exists. One-time setup:
+#   1. nuget.org > your profile > Trusted Publishing > add a policy: owner krnblds, repository Slowcooker,
+#      workflow file release.yml, environment nuget.
+#   2. GitHub > Settings > Secrets and variables > Actions > Variables: NUGET_USER = your nuget.org profile name
+#      (not your email). Optionally require reviewers on the "nuget" environment.
 
 on:
   push:
@@ -21,7 +28,8 @@ on:
         type: string
 
 permissions:
-  contents: write
+  contents: write # tag and GitHub release
+  id-token: write # OIDC token for NuGet trusted publishing
 
 concurrency:
   group: release-${{ github.ref }}
@@ -76,8 +84,23 @@ jobs:
       - name: Pack
         run: dotnet pack Slowcooker.sln --configuration Release --no-build -p:SkipDashboardBuild=true -p:Version=$VERSION -o artifacts
 
+      - name: Check trusted publishing setup
+        env:
+          NUGET_USER: ${{ vars.NUGET_USER }}
+        run: |
+          if [ -z "$NUGET_USER" ]; then
+            echo "::error::Set the NUGET_USER repository variable to your nuget.org profile name (see the comment at the top of release.yml)."
+            exit 1
+          fi
+
+      - name: NuGet login (OIDC)
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGET_USER }}
+
       - name: Push to NuGet
-        run: dotnet nuget push "artifacts/*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: dotnet nuget push "artifacts/*.nupkg" --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
 
       - name: GitHub release
         uses: softprops/action-gh-release@v3
