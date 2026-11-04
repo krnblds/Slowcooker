@@ -1,23 +1,24 @@
 {
-  "name": "@slowcooker/dashboard",
-  "version": "0.1.0",
+  "name": "slowcooker-dashboard",
   "private": true,
   "type": "module",
-  "description": "Vue 3 component kit and demo admin dashboard for the Slowcooker job API",
+  "description": "Workspace for @slowcooker/vue (the component kit) and the admin app bundled with Slowcooker.AspNetCore",
+  "workspaces": [
+    "kit",
+    "admin"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc --build && vite build",
-    "typecheck": "vue-tsc --build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "vue": "3.5.44"
+    "build": "npm run build --workspaces",
+    "dev": "npm run dev -w admin",
+    "typecheck": "npm run typecheck --workspaces",
+    "test": "npm test -w kit"
   },
   "devDependencies": {
     "@types/node": "26.6.6",
     "@vitejs/plugin-vue": "6.0.10",
     "typescript": "6.0.3",
     "vite": "8.3.5",
+    "vue": "3.5.44",
     "vue-tsc": "3.3.14"
   }
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { QueueTable, type Stats } from "@kit";
+import { QueueTable, type Stats } from "@slowcooker/vue";
 
 defineProps<{ stats: Stats | undefined }>();
 const emit = defineEmits<{ selectQueue: [queue: string] }>();

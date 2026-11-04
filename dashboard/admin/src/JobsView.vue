@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { ErrorBanner, JobDetail, JobFilters, JobTable, Pagination, useJob, useJobs, useStats, type Job, type JobState } from "@kit";
+import { ErrorBanner, JobDetail, JobFilters, JobTable, Pagination, useJob, useJobs, useStats, type Job, type JobState } from "@slowcooker/vue";
 
 defineProps<{ now: string | null }>();
 

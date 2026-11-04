@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { CronPreview, ErrorBanner, RecurringTable, useRecurring, type RecurringJob } from "@kit";
+import { CronPreview, ErrorBanner, RecurringTable, useRecurring, type RecurringJob } from "@slowcooker/vue";
 
 defineProps<{ now: string | null }>();
 
