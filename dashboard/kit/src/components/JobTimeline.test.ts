@@ -31,8 +31,13 @@ describe("JobTimeline", () => {
   it("summarises earlier attempts and marks the final state as current", () => {
     const j = job({ state: "succeeded", attempt: 3, completedAt: "2026-06-01T08:05:00+00:00" });
     const wrapper = mount(JobTimeline, { props: { job: j, now: NOW } });
-    expect(wrapper.findAll(".sc-timeline__title").map((t) => t.text())).toEqual(["Enqueued", "2 earlier attempts failed", "Succeeded on attempt 3"]);
+    expect(wrapper.findAll(".sc-timeline__title").map((t) => t.text())).toEqual(["Enqueued", "2 earlier attempts failed", "Attempt 3 due", "Succeeded on attempt 3"]);
     expect(wrapper.find(".sc-timeline__step--current").classes()).toContain("sc-timeline__step--succeeded");
+  });
+
+  it("shows a delayed first run as scheduled", () => {
+    const j = job({ state: "succeeded", attempt: 1, runAt: "2026-06-01T08:05:00+00:00", completedAt: "2026-06-01T08:05:01+00:00" });
+    expect(titles(j)).toEqual(["Enqueued", "Scheduled to run", "Succeeded"]);
   });
 
   it("flags a processing job whose lease has lapsed", () => {

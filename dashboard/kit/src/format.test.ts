@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { describeCron, formatDateTime, formatDuration, setDisplayTimeZone, splitError } from "./format";
+import { describeCron, errorSignature, formatDateTime, formatDuration, setDisplayTimeZone, splitError } from "./format";
 
 describe("describeCron", () => {
   it.each([
@@ -23,6 +23,15 @@ describe("describeCron", () => {
 
   it.each(["", "0 0 1 1 *", "0 0 * * MON", "1-5 * * * *", "0 25 * * *", "0 0 0 * * *", "nonsense"])("returns null for %j", (cron) => {
     expect(describeCron(cron)).toBeNull();
+  });
+});
+
+describe("errorSignature", () => {
+  it("masks the parts of a message that differ between occurrences", () => {
+    expect(errorSignature("System.InvalidOperationException: Mailbox ada6@dead.example does not exist (550 5.1.1).\n   at X()"))
+      .toBe("System.InvalidOperationException: Mailbox … does not exist (# #).");
+    expect(errorSignature("KeyNotFoundException: Order 'o-42' not found")).toBe(errorSignature("KeyNotFoundException: Order 'o-7' not found"));
+    expect(errorSignature("Job 01a1a675a636700087ca0738a479258e timed out")).toBe("Job … timed out");
   });
 });
 

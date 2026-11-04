@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { RouterLink, useRouter } from "vue-router";
-import { ErrorBanner, RelativeTime, describeCron, errorHeadline, formatDateTime, useJobs, useRecurring, type JobState } from "@slowcooker/vue";
+import { ErrorBanner, RelativeTime, describeCron, errorHeadline, errorSignature, formatDateTime, useJobs, useRecurring, type JobState } from "@slowcooker/vue";
 import Icon from "../components/Icon.vue";
 import PageHeader from "../components/PageHeader.vue";
 import QueueBar from "../components/QueueBar.vue";
@@ -35,8 +35,9 @@ const series = (state: JobState) => stats.history.value.map((h) => h[state]);
 const topErrors = computed(() => {
   const groups = new Map<string, { headline: string; name: string; count: number; latest: string; jobId: string }>();
   for (const job of failed.items.value) {
+    // Grouped by job name and the error with its variable parts masked; the latest occurrence is shown as the example.
     const headline = errorHeadline(job.lastError) || "Failed without an error message";
-    const key = `${job.name}\u0000${headline}`;
+    const key = `${job.name}\u0000${errorSignature(job.lastError)}`;
     const at = job.completedAt ?? job.runAt;
     const g = groups.get(key);
     if (!g) groups.set(key, { headline, name: job.name, count: 1, latest: at, jobId: job.id });
@@ -45,6 +46,7 @@ const topErrors = computed(() => {
       if (at > g.latest) {
         g.latest = at;
         g.jobId = job.id;
+        g.headline = headline;
       }
     }
   }

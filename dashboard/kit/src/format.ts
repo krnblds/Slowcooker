@@ -63,6 +63,19 @@ export function errorHeadline(error: string | null | undefined): string {
   return (error ?? "").split("\n")[0]?.trim() ?? "";
 }
 
+/**
+ * The headline with its variable parts masked (emails, ids, numbers, quoted values), so that the same failure about
+ * different inputs groups together: "Mailbox ada@x.example does not exist (550)" becomes "Mailbox … does not exist (#)".
+ */
+export function errorSignature(error: string | null | undefined): string {
+  return errorHeadline(error)
+    .replace(/[\w.+-]+@[\w.-]+/g, "…")
+    .replace(/'[^']*'|"[^"]*"/g, "'…'")
+    .replace(/\b[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}\b/gi, "…")
+    .replace(/\b[0-9a-f]{16,}\b/gi, "…")
+    .replace(/\d+(\.\d+)*/g, "#");
+}
+
 /** An exception string split into its first line, its message lines and its "at ..." stack frames. */
 export function splitError(error: string | null | undefined): { headline: string; details: string[]; frames: string[] } {
   const lines = (error ?? "").split(/\r?\n/);

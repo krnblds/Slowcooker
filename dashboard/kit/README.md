@@ -101,7 +101,7 @@ Props are typed; events are listed as `@event(payload)`. Every table has an `act
 | `PayloadView` | `value` | | Pretty-printed JSON |
 | `ErrorBanner` | `error` | | Renders an `Error`'s message, or nothing |
 
-Helpers in `format.ts`: `formatRelative`, `formatDateTime`, `formatDuration`, `formatJson`, `errorHeadline`, `splitError` (headline, message lines, stack frames), `describeCron` ("Weekdays at 09:00" for common five-field patterns, `null` otherwise) and `setDisplayTimeZone("UTC" | ianaZone | undefined)`, which switches every absolute time the kit renders to that zone, reactively.
+Helpers in `format.ts`: `formatRelative`, `formatDateTime`, `formatDuration`, `formatJson`, `errorHeadline`, `splitError` (headline, message lines, stack frames), `errorSignature` (the headline with emails, ids, numbers and quoted values masked, for grouping), `describeCron` ("Weekdays at 09:00" for common five-field patterns, `null` otherwise) and `setDisplayTimeZone("UTC" | ianaZone | undefined)`, which switches every absolute time the kit renders to that zone, reactively.
 
 ## Theming
 

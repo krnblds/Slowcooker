@@ -33,8 +33,12 @@ const steps = computed<Step[]>(() => {
     return out;
   }
 
-  if (delayed) out.push({ key: "run", tone: "scheduled", title: "Scheduled to run", at: j.runAt });
-  if (j.attempt > 1) out.push({ key: "attempts", tone: "neutral", title: `${j.attempt - 1} earlier ${j.attempt - 1 === 1 ? "attempt" : "attempts"} failed`, detail: j.state === "processing" && j.lastError ? errorHeadline(j.lastError) : undefined });
+  if (j.attempt > 1) {
+    out.push({ key: "attempts", tone: "neutral", title: `${j.attempt - 1} earlier ${j.attempt - 1 === 1 ? "attempt" : "attempts"} failed`, detail: j.state === "processing" && j.lastError ? errorHeadline(j.lastError) : undefined });
+    out.push({ key: "run", tone: "scheduled", title: `Attempt ${j.attempt} due`, at: j.runAt });
+  } else if (delayed) {
+    out.push({ key: "run", tone: "scheduled", title: "Scheduled to run", at: j.runAt });
+  }
 
   if (j.state === "processing") {
     out.push({ key: "running", tone: "processing", title: `Running attempt ${j.attempt}`, detail: j.leaseOwner ? `on ${j.leaseOwner}` : undefined, current: true });

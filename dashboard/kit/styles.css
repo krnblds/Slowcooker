@@ -317,6 +317,7 @@ pre code { padding: 0; background: none; font-size: inherit; color: inherit; }
   box-shadow: var(--sc-shadow-sm);
   transition: background-color var(--sc-duration), border-color var(--sc-duration), color var(--sc-duration), opacity var(--sc-duration);
 }
+a.sc-btn { text-decoration: none; }
 .sc-btn:hover:not(:disabled) { background: var(--sc-surface-2); border-color: var(--sc-muted); }
 .sc-btn:focus-visible { outline: 2px solid var(--sc-accent); outline-offset: 2px; }
 .sc-btn:disabled { opacity: 0.45; cursor: not-allowed; }
