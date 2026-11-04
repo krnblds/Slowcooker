@@ -53,6 +53,7 @@ CREATE INDEX IF NOT EXISTS jobs_lease_idx       ON "slowcooker".jobs (lease_expi
 CREATE INDEX IF NOT EXISTS jobs_purge_idx       ON "slowcooker".jobs (state, completed_at);
 CREATE INDEX IF NOT EXISTS jobs_list_idx        ON "slowcooker".jobs (created_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS jobs_queue_list_idx  ON "slowcooker".jobs (queue, state, created_at DESC);
+CREATE INDEX IF NOT EXISTS jobs_name_list_idx   ON "slowcooker".jobs (job_name, created_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS jobs_idempotency_idx ON "slowcooker".jobs (idempotency_key) WHERE idempotency_key IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS "slowcooker".recurring_jobs (
@@ -112,7 +113,7 @@ Every operation is a single Lua script, so it is atomic and one round-trip. Key 
 | `p:job:{id}` | hash | the job |
 | `p:queue:{queue}` | zset | scheduled jobs, score = `run_at` ms |
 | `p:processing` | zset | leased jobs, score = `lease_expires_at` ms |
-| `p:idx:all`, `p:idx:state:{n}`, `p:idx:queue:{q}` | zset | listing indexes, score = `created_at` ms |
+| `p:idx:all`, `p:idx:state:{n}`, `p:idx:queue:{q}`, `p:idx:name:{name}` | zset | listing indexes, score = `created_at` ms; filters that combine are intersected into a temporary key inside the script |
 | `p:idx:completed:{n}` | zset | succeeded / failed jobs by `completed_at`, for retention |
 | `p:stats` | hash | `"{queue}|{state}"` → count |
 | `p:idem:{key}` | string | owner of an idempotency key |

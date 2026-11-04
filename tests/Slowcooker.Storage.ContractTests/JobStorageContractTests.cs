@@ -530,6 +530,35 @@ public abstract class JobStorageContractTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Query_filters_by_exact_job_name_combined_with_state_and_queue()
+    {
+        var report = await Storage.CreateAsync(NewJob(queue: "reports") with { Job = new Job("daily-report", "{}") }, Ct);
+        Time.Advance(TimeSpan.FromSeconds(1));
+        var email = await Storage.CreateAsync(NewJob(queue: "mail"), Ct);
+        Time.Advance(TimeSpan.FromSeconds(1));
+        var report2 = await Storage.CreateAsync(NewJob(queue: "mail") with { Job = new Job("daily-report", "{}") }, Ct);
+        foreach (var f in await FetchAsync(max: 10, queues: ["reports"])) await f.CompleteAsync(Ct);
+
+        var byName = await Storage.QueryAsync(new JobQuery { Name = "daily-report" }, Ct);
+        Assert.Equal(2, byName.Total);
+        Assert.Equal([report2, report], byName.Items.Select(j => j.Id));
+
+        var combined = await Storage.QueryAsync(new JobQuery { Name = "daily-report", Queue = "mail", State = JobState.Scheduled }, Ct);
+        Assert.Equal([report2], combined.Items.Select(j => j.Id));
+
+        Assert.Equal(0, (await Storage.QueryAsync(new JobQuery { Name = "daily-report", State = JobState.Failed }, Ct)).Total);
+        Assert.Equal(1, (await Storage.QueryAsync(new JobQuery { Name = "send-email" }, Ct)).Total);
+        Assert.Equal(0, (await Storage.QueryAsync(new JobQuery { Name = "daily" }, Ct)).Total); // exact, not prefix
+
+        // The name index is kept up to date by deletes and purges.
+        Assert.True(await Storage.DeleteAsync(email, Ct));
+        Assert.Equal(0, (await Storage.QueryAsync(new JobQuery { Name = "send-email" }, Ct)).Total);
+        Time.Advance(TimeSpan.FromMinutes(1));
+        await Storage.PurgeAsync(JobState.Succeeded, Time.GetUtcNow(), Ct);
+        Assert.Equal([report2], (await Storage.QueryAsync(new JobQuery { Name = "daily-report" }, Ct)).Items.Select(j => j.Id));
+    }
+
+    [Fact]
     public async Task Query_clamps_paging_arguments()
     {
         await Storage.CreateAsync(NewJob(), Ct);

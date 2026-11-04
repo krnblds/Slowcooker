@@ -21,7 +21,9 @@ The API can requeue and delete jobs, so it refuses remote callers unless you opt
 3. If the request comes from the same machine (loopback or the server's own address): allowed.
 4. Otherwise `403` with an explanatory JSON error.
 
-So in development it just works, and in production you attach your real policy. For a browser dashboard on another origin add CORS yourself (`app.UseCors(...)` plus `api.RequireCors(...)`).
+So in development it just works, and in production you attach your real policy.
+
+Independently of that rule, every `POST` and `DELETE` must carry an `X-Slowcooker-Request` header with any non-empty value, or it gets `403`. Browsers only send custom headers to another origin after a CORS preflight that this API does not answer, so a page on some other site cannot make a visitor's browser requeue or delete jobs, whether the API is relying on the local-only rule or on cookie authentication. The bundled dashboard and the kit's client send the header; scripts add it themselves (`curl -X POST -H 'X-Slowcooker-Request: 1' ...`). `GET` requests do not need it. For a browser dashboard on another origin add CORS yourself (`app.UseCors(...)` plus `api.RequireCors(...)`).
 
 ## Conventions
 
@@ -29,6 +31,7 @@ So in development it just works, and in production you attach your real policy. 
 * Timestamps are ISO 8601 with offset, always UTC (`2026-11-04T09:15:00+00:00`). `serverTime` is included where useful so a dashboard can show "due in 3 min" without trusting the browser clock.
 * `payload` is the job's JSON exactly as stored (an object), so a dashboard can render it directly.
 * Errors are `{ "error": "message" }` with an appropriate status code.
+* `POST` and `DELETE` need the `X-Slowcooker-Request` header (see Access control).
 * The API uses its own serializer settings; your application's `JsonOptions` are untouched.
 
 ## Endpoints
@@ -62,9 +65,9 @@ Counts by state, overall and per queue, plus the number of recurring jobs. Poll 
 
 The `queues` array from `/stats` on its own.
 
-### `GET /jobs?state=&queue=&skip=&take=`
+### `GET /jobs?state=&queue=&name=&skip=&take=`
 
-Jobs newest first. `state` is one of the four state names (case-insensitive); `queue` is an exact name; `take` is clamped to 1..500 (default 50).
+Jobs newest first. `state` is one of the four state names (case-insensitive); `queue` is an exact queue name; `name` is an exact job name (the `[JobName]`, e.g. `send-welcome-email`), which is how the dashboard lists the runs of one recurring schedule; `take` is clamped to 1..500 (default 50). Filters combine.
 
 ```json
 {
@@ -175,7 +178,7 @@ A minimal page needs three calls: `/stats` on a timer, `/jobs?state=failed` for 
 const base = "/slowcooker";
 const stats = await fetch(`${base}/stats`).then(r => r.json());
 const failed = await fetch(`${base}/jobs?state=failed&take=100`).then(r => r.json());
-await fetch(`${base}/jobs/${failed.items[0].id}/requeue`, { method: "POST" });
+await fetch(`${base}/jobs/${failed.items[0].id}/requeue`, { method: "POST", headers: { "X-Slowcooker-Request": "1" } });
 ```
 
 There is no push channel for the dashboard itself; poll `/stats` every 2 to 5 seconds and the job list when the counts change.

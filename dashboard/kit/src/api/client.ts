@@ -38,6 +38,8 @@ export function createClient(options: ClientOptions = {}) {
     }
     const headers = new Headers(typeof options.headers === "function" ? await options.headers() : options.headers);
     headers.set("accept", "application/json");
+    // Required by the API on POST and DELETE; a cross-site page cannot send it without a CORS preflight.
+    headers.set("x-slowcooker-request", "1");
 
     const response = await doFetch(url.toString(), { method, headers });
     if (response.status === 204) return undefined as T;
@@ -70,9 +72,9 @@ export function createClient(options: ClientOptions = {}) {
     /** Per-queue counts only. */
     queues: () => request<QueueStats[]>("GET", "/queues"),
 
-    /** Jobs newest first. `take` is clamped to 1..500 by the server. */
+    /** Jobs newest first. `name` is an exact job name. `take` is clamped to 1..500 by the server. */
     jobs: (query: JobsQuery = {}) =>
-      request<Page<Job>>("GET", "/jobs", { state: query.state, queue: query.queue, skip: query.skip, take: query.take }),
+      request<Page<Job>>("GET", "/jobs", { state: query.state, queue: query.queue, name: query.name, skip: query.skip, take: query.take }),
 
     job: (id: string) => request<Job>("GET", `/jobs/${encodeURIComponent(id)}`),
 

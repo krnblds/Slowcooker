@@ -45,6 +45,7 @@ public sealed class SlowcookerApiTests : IAsyncDisposable
         _app.StartAsync().GetAwaiter().GetResult();
 
         _http = _app.GetTestClient();
+        _http.DefaultRequestHeaders.Add(SlowcookerApi.RequestHeader, "1");
         _client = _app.Services.GetRequiredService<IJobClient>();
         _storage = _app.Services.GetRequiredService<IJobStorage>();
         _recurring = _app.Services.GetRequiredService<IRecurringJobClient>();
@@ -114,6 +115,24 @@ public sealed class SlowcookerApiTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task Jobs_can_be_filtered_by_exact_job_name()
+    {
+        await _client.EnqueueAsync(new Note("a"));
+        await _client.EnqueueAsync(new ChargeCard("o1", 5));
+        await _client.EnqueueAsync(new ChargeCard("o2", 6));
+
+        var charges = await GetAsync<PageDto<JobDto>>("/api/jobs-admin/jobs?name=charge-card");
+        Assert.Equal(2, charges.Total);
+        Assert.All(charges.Items, j => Assert.Equal("charge-card", j.Name));
+
+        var scoped = await GetAsync<PageDto<JobDto>>("/api/jobs-admin/jobs?name=charge-card&queue=default");
+        Assert.Equal(0, scoped.Total);
+
+        var all = await GetAsync<PageDto<JobDto>>("/api/jobs-admin/jobs?name=");
+        Assert.Equal(3, all.Total);
+    }
+
+    [Fact]
     public async Task Enum_values_are_camelCase_strings_on_the_wire()
     {
         await _client.EnqueueAsync(new Note("x"));
@@ -146,6 +165,25 @@ public sealed class SlowcookerApiTests : IAsyncDisposable
         Assert.Equal(HttpStatusCode.NotFound, (await _http.GetAsync($"/api/jobs-admin/jobs/{id}")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await _http.DeleteAsync($"/api/jobs-admin/jobs/{id}")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await _http.PostAsync($"/api/jobs-admin/jobs/{id}/requeue", null)).StatusCode);
+    }
+
+    [Fact]
+    public async Task State_changing_requests_without_the_request_header_are_refused()
+    {
+        var id = await _client.EnqueueAsync(new Note("keep"));
+        await _recurring.AddOrUpdateAsync("nightly", new Note("n"), "0 0 * * *");
+        using var bare = _app.GetTestClient(); // what a cross-site form post looks like: no custom headers
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await bare.PostAsync($"/api/jobs-admin/jobs/{id}/requeue", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await bare.DeleteAsync($"/api/jobs-admin/jobs/{id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await bare.PostAsync("/api/jobs-admin/recurring/nightly/trigger", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await bare.DeleteAsync("/api/jobs-admin/recurring/nightly")).StatusCode);
+        var refused = await bare.DeleteAsync($"/api/jobs-admin/jobs/{id}");
+        Assert.Contains(SlowcookerApi.RequestHeader, await refused.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, (await bare.GetAsync($"/api/jobs-admin/jobs/{id}")).StatusCode); // reads need nothing
+        Assert.NotNull(await _storage.GetAsync(id, CancellationToken.None));
+        Assert.NotNull(await _storage.GetRecurringAsync("nightly", CancellationToken.None));
     }
 
     [Fact]

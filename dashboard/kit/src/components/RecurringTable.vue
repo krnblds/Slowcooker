@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { RecurringJob } from "../api";
+import { describeCron } from "../format";
 import RelativeTime from "./RelativeTime.vue";
 
 defineProps<{ items: RecurringJob[]; now?: string | null; readonly?: boolean }>();
@@ -15,7 +16,7 @@ const emit = defineEmits<{ select: [job: RecurringJob]; trigger: [job: Recurring
       <tr v-for="r in items" :key="r.id" class="sc-row--clickable" @click="emit('select', r)">
         <td><span class="sc-job__name">{{ r.id }}</span></td>
         <td>{{ r.displayName }}</td>
-        <td><span class="sc-chip">{{ r.cron }}</span></td>
+        <td><span class="sc-chip">{{ r.cron }}</span><div v-if="describeCron(r.cron)" class="sc-cron__desc">{{ describeCron(r.cron) }}</div></td>
         <td>{{ r.timeZoneId }}</td>
         <td><span class="sc-chip">{{ r.queue }}</span></td>
         <td><RelativeTime v-if="r.nextRunAt" :value="r.nextRunAt" :now="now" /><span v-else class="sc-badge sc-badge--parked">parked</span></td>

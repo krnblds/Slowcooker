@@ -7,11 +7,13 @@ export interface UseJobsOptions extends PollingOptions {
   client?: SlowcookerClient;
   state?: JobState | null;
   queue?: string | null;
+  /** Exact job name. */
+  name?: string | null;
   pageSize?: number;
 }
 
 /**
- * A filtered, paged, optionally polling job list. Change `state`, `queue` or `page` and it refetches.
+ * A filtered, paged, optionally polling job list. Change `state`, `queue`, `name` or `page` and it refetches.
  *
  *   const jobs = useJobs({ state: "failed", pageSize: 50, intervalMs: 5000 });
  *   jobs.queue.value = "payments";
@@ -20,15 +22,16 @@ export function useJobs(options: UseJobsOptions = {}) {
   const api = useSlowcooker(options.client);
   const state: Ref<JobState | null> = ref(options.state ?? null);
   const queue: Ref<string | null> = ref(options.queue ?? null);
+  const name: Ref<string | null> = ref(options.name ?? null);
   const pageSize = ref(options.pageSize ?? 50);
   const page = ref(0);
 
   const polling = usePolling<Page<Job>>(
-    () => api.jobs({ state: state.value, queue: queue.value, skip: page.value * pageSize.value, take: pageSize.value }),
+    () => api.jobs({ state: state.value, queue: queue.value, name: name.value, skip: page.value * pageSize.value, take: pageSize.value }),
     { intervalMs: 0, ...options },
   );
 
-  watch([state, queue, pageSize], () => {
+  watch([state, queue, name, pageSize], () => {
     page.value = 0;
     void polling.refresh();
   });
@@ -42,6 +45,7 @@ export function useJobs(options: UseJobsOptions = {}) {
     ...polling,
     state,
     queue,
+    name,
     pageSize,
     page,
     items,

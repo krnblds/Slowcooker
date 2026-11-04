@@ -29,14 +29,14 @@ styles.css        default styling via CSS variables (light + dark)
 
 ## API client
 
-`createClient(options)` returns an object with one method per endpoint. All methods return promises of the types in `api/types.ts`; failures throw `SlowcookerApiError { status, message, url }`. Options: `baseUrl` (default `/slowcooker/api`), `headers` (object or function, sync or async), `fetch` (for tests and SSR).
+`createClient(options)` returns an object with one method per endpoint. All methods return promises of the types in `api/types.ts`; failures throw `SlowcookerApiError { status, message, url }`. Options: `baseUrl` (default `/slowcooker/api`), `headers` (object or function, sync or async), `fetch` (for tests and SSR). Every request carries the `X-Slowcooker-Request` header the API requires on `POST` and `DELETE`.
 
 | Method | Endpoint | Returns |
 |---|---|---|
 | `info()` | `GET /info` | `Info` (version, storage, serverTime) |
 | `stats()` | `GET /stats` | `Stats` (counts, per-queue counts, serverTime) |
 | `queues()` | `GET /queues` | `QueueStats[]` |
-| `jobs({ state, queue, skip, take })` | `GET /jobs` | `Page<Job>` newest first |
+| `jobs({ state, queue, name, skip, take })` | `GET /jobs` | `Page<Job>` newest first; `name` is an exact job name |
 | `job(id)` | `GET /jobs/{id}` | `Job` |
 | `requeue(id)` | `POST /jobs/{id}/requeue` | `Job` (409 while processing) |
 | `deleteJob(id)` | `DELETE /jobs/{id}` | `void` |
@@ -58,8 +58,8 @@ The primitive the others build on. Returns `{ data, error, loading, refresh, pau
 ### `useStats({ intervalMs = 3000 })`
 `/stats` on a timer. `stats.data.value?.serverTime` is the server clock; pass it as `now` to time-displaying components.
 
-### `useJobs({ state, queue, pageSize = 50, intervalMs = 0 })`
-A filtered, paged list. Returns everything from `usePolling` plus reactive `state`, `queue`, `pageSize`, `page`, and computed `items`, `total`, `pageCount`, with `next()`, `prev()`, `requeue(id)`, `remove(id)`. Changing a filter resets to page 0 and refetches.
+### `useJobs({ state, queue, name, pageSize = 50, intervalMs = 0 })`
+A filtered, paged list. Returns everything from `usePolling` plus reactive `state`, `queue`, `name` (exact job name), `pageSize`, `page`, and computed `items`, `total`, `pageCount`, with `next()`, `prev()`, `requeue(id)`, `remove(id)`. Changing a filter resets to page 0 and refetches.
 
 ```ts
 const jobs = useJobs({ state: "failed", pageSize: 25, intervalMs: 5000 });
@@ -88,17 +88,20 @@ Props are typed; events are listed as `@event(payload)`. Every table has an `act
 | `StatsBar` | `stats`, `loading` | `@select(state)`; default slot | The four state counters + recurring count. Click a counter to filter the job list |
 | `QueueTable` | `queues` | `@select(queue)` | Per-queue counts |
 | `JobFilters` | `queues?` | `v-model:state`, `v-model:queue`; default slot | State select + queue select (or free text) |
-| `JobTable` | `jobs`, `now?`, `selectedId?`, `readonly?` | `@select(job)`, `@requeue(job)`, `@delete(job)`; slots `actions`, `empty` | The list: name, queue, badge, attempt, relative times, first line of the last error |
-| `JobDetail` | `job`, `now?`, `readonly?` | `@requeue`, `@delete`, `@close`; slots `actions`, default | Everything about one job, payload and full error |
+| `JobTable` | `jobs`, `now?`, `selectedId?`, `readonly?`, `selectable?` | `@select(job)`, `@requeue(job)`, `@delete(job)`, `v-model:selection` (ids); slots `actions`, `empty` | The list: name, queue, badge, attempt, relative times, first line of the last error. Scheduled jobs are marked `due` or `retry`. `selectable` adds a checkbox column with select-all for bulk actions |
+| `StateTabs` | `counts?`, `total?` | `v-model:state` (`null` = all) | Segmented state filter with per-state counts, e.g. from `/stats` |
+| `JobDetail` | `job`, `now?`, `readonly?`, `closable?` | `@requeue`, `@delete`, `@close`; slots `actions`, default | Everything about one job: properties, history, error and payload |
+| `JobTimeline` | `job`, `now?` | | The job's history as far as storage records it: enqueued, scheduled, attempts, lease, outcome |
+| `ErrorView` | `error` | | An exception string as a headline, message lines and a collapsed stack trace |
 | `Pagination` | `page`, `pageCount`, `total`, `pageSize` | `@change(page)` | Prev/next + "1–25 of 400" |
-| `RecurringTable` | `items`, `now?`, `readonly?` | `@select`, `@trigger`, `@delete`; slot `actions` | Recurring jobs with next/last run; parked schedules get a badge |
-| `CronPreview` | `expression`, `timeZone?`, `count?` | | Live validation + upcoming runs (uses `useCronPreview`) |
+| `RecurringTable` | `items`, `now?`, `readonly?` | `@select`, `@trigger`, `@delete`; slot `actions` | Recurring jobs with next/last run and a plain-English schedule; parked schedules get a badge |
+| `CronPreview` | `expression`, `timeZone?`, `count?` | | Live validation, a plain-English summary and upcoming runs (uses `useCronPreview`) |
 | `StateBadge` | `state` | | Coloured pill |
 | `RelativeTime` | `value`, `now?` | | "in 3 minutes" / "2 hours ago" with the absolute time as tooltip. Pass the server clock as `now` |
 | `PayloadView` | `value` | | Pretty-printed JSON |
 | `ErrorBanner` | `error` | | Renders an `Error`'s message, or nothing |
 
-Helpers in `format.ts`: `formatRelative`, `formatDateTime`, `formatJson`, `errorHeadline`.
+Helpers in `format.ts`: `formatRelative`, `formatDateTime`, `formatDuration`, `formatJson`, `errorHeadline`, `splitError` (headline, message lines, stack frames), `errorSignature` (the headline with emails, ids, numbers and quoted values masked, for grouping), `describeCron` ("Weekdays at 09:00" for common five-field patterns, `null` otherwise) and `setDisplayTimeZone("UTC" | ianaZone | undefined)`, which switches every absolute time the kit renders to that zone, reactively.
 
 ## Theming
 
@@ -108,7 +111,10 @@ Everything is styled through `sc-*` classes and these variables (defined for lig
 --sc-bg --sc-fg --sc-muted --sc-border --sc-surface --sc-accent
 --sc-scheduled --sc-processing --sc-succeeded --sc-failed
 --sc-radius --sc-font --sc-mono
+--sc-brand-2 --sc-toast-bg --sc-toast-fg     /* used by the admin shell */
 ```
+
+Each theme also sets `color-scheme`, so native checkboxes, selects and scrollbars follow light and dark.
 
 Override them in your own stylesheet, or skip `styles.css` entirely and style the classes yourself. Components contain no inline styles.
 

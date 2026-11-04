@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { Job } from "../api";
 import { formatDateTime } from "../format";
+import ErrorView from "./ErrorView.vue";
+import JobTimeline from "./JobTimeline.vue";
 import PayloadView from "./PayloadView.vue";
 import RelativeTime from "./RelativeTime.vue";
 import StateBadge from "./StateBadge.vue";
@@ -34,13 +36,16 @@ const emit = defineEmits<{ requeue: [job: Job]; delete: [job: Job]; close: [] }>
       <dt v-if="job.idempotencyKey">Idempotency key</dt><dd v-if="job.idempotencyKey"><code>{{ job.idempotencyKey }}</code></dd>
     </dl>
 
-    <h3>Payload</h3>
-    <PayloadView :value="job.payload" />
+    <h3>History</h3>
+    <JobTimeline :job="job" :now="now" />
 
     <template v-if="job.lastError">
-      <h3>Last error</h3>
-      <pre class="sc-error"><code>{{ job.lastError }}</code></pre>
+      <h3>{{ job.state === "succeeded" ? "Error from an earlier attempt" : "Last error" }}</h3>
+      <ErrorView :error="job.lastError" />
     </template>
+
+    <h3>Payload</h3>
+    <PayloadView :value="job.payload" />
 
     <slot />
   </section>

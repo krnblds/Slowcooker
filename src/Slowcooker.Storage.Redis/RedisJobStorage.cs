@@ -142,6 +142,7 @@ public sealed class RedisJobStorage : IJobStorage, IAsyncDisposable
         var result = await RunAsync(RedisScripts.Query,
             query.State is { } s ? ((int)s).ToString(CultureInfo.InvariantCulture) : "",
             query.Queue ?? "",
+            query.Name ?? "",
             query.Skip, query.Take, Guid.NewGuid().ToString("N")).ConfigureAwait(false);
 
         var parts = (RedisResult[])result!;

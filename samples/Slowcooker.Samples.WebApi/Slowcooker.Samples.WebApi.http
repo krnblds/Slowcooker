@@ -23,3 +23,4 @@ GET {{host}}/slowcooker/api/recurring
 
 ###
 POST {{host}}/slowcooker/api/recurring/daily-report-eu/trigger
+X-Slowcooker-Request: 1

@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { RouterLink, useRouter } from "vue-router";
-import { CronPreview, ErrorBanner, PayloadView, RelativeTime, formatDateTime, useRecurring, type RecurringJob } from "@slowcooker/vue";
-import { RecurringTable } from "@slowcooker/vue";
+import { CronPreview, ErrorBanner, JobTable, PayloadView, RecurringTable, RelativeTime, describeCron, formatDateTime, useJobs, useRecurring, type RecurringJob } from "@slowcooker/vue";
 import Drawer from "../components/Drawer.vue";
 import Icon from "../components/Icon.vue";
 import PageHeader from "../components/PageHeader.vue";
 import { confirm } from "../confirm";
+import { copy } from "../copy";
+import { followLive } from "../live";
 import { useSharedStats } from "../stats";
 import { attempt } from "../toasts";
 
@@ -14,10 +15,27 @@ const props = defineProps<{ id?: string }>();
 const router = useRouter();
 const stats = useSharedStats();
 const recurring = useRecurring({ intervalMs: 5000 });
+followLive(recurring);
 
+const search = ref("");
 const items = computed(() => recurring.data.value ?? []);
+const visible = computed(() => {
+  const q = search.value.trim().toLowerCase();
+  return q ? items.value.filter((r) => `${r.id} ${r.name} ${r.queue} ${r.cron}`.toLowerCase().includes(q)) : items.value;
+});
 const selected = computed(() => (props.id ? items.value.find((r) => r.id === props.id) : undefined));
 const parked = computed(() => items.value.filter((r) => !r.nextRunAt).length);
+
+// Jobs do not record which schedule created them, so the drawer lists recent jobs of the same job name and says so.
+const recent = useJobs({ pageSize: 5, intervalMs: 5000, immediate: false });
+followLive(recent);
+watch(
+  () => selected.value?.name,
+  (name) => {
+    recent.name.value = name ?? null;
+  },
+  { immediate: true },
+);
 
 function open(job: RecurringJob) {
   void router.push({ name: "recurring", params: { id: job.id } });
@@ -27,12 +45,15 @@ function closeDetail() {
 }
 
 async function trigger(job: RecurringJob) {
-  await attempt(() => recurring.trigger(job.id), `Triggered ${job.displayName}; it will run shortly`);
+  if (await attempt(() => recurring.trigger(job.id), `Triggered ${job.id}; it will run shortly`)) {
+    void stats.refresh();
+    if (props.id === job.id) void recent.refresh();
+  }
 }
 async function remove(job: RecurringJob) {
   const ok = await confirm({
     title: "Delete schedule?",
-    message: `${job.id} will stop running. Jobs it already created are kept.`,
+    message: `${job.id} will stop running. Jobs it already created are kept. If the application declares it at startup, it comes back on the next restart.`,
     confirmLabel: "Delete",
     danger: true,
   });
@@ -41,25 +62,12 @@ async function remove(job: RecurringJob) {
     if (props.id === job.id) closeDetail();
   }
 }
-
-// A cron scratchpad backed by the preview endpoint. Schedules themselves are declared in code.
-const expression = ref("0 6 * * *");
-const timeZone = ref(Intl.DateTimeFormat().resolvedOptions().timeZone);
-const presets: { label: string; cron: string }[] = [
-  { label: "Every minute", cron: "* * * * *" },
-  { label: "Every 15 min", cron: "*/15 * * * *" },
-  { label: "Hourly", cron: "0 * * * *" },
-  { label: "Daily 06:00", cron: "0 6 * * *" },
-  { label: "Weekdays 09:00", cron: "0 9 * * 1-5" },
-  { label: "Mondays 08:00", cron: "0 8 * * 1" },
-  { label: "1st of month", cron: "0 0 1 * *" },
-];
 </script>
 
 <template>
   <PageHeader title="Recurring jobs">
     <template #subtitle>
-      {{ items.length }} {{ items.length === 1 ? "schedule" : "schedules" }}<template v-if="parked"> · {{ parked }} parked</template>
+      {{ items.length }} {{ items.length === 1 ? "schedule" : "schedules" }}<template v-if="parked"> · {{ parked }} parked</template> · declared in code with <code>IRecurringJobClient</code>
     </template>
     <button type="button" class="sc-btn" :disabled="recurring.loading.value" @click="recurring.refresh()"><Icon name="refresh" /> Refresh</button>
   </PageHeader>
@@ -67,54 +75,57 @@ const presets: { label: string; cron: string }[] = [
   <ErrorBanner :error="recurring.error.value" />
 
   <section class="sc-card">
-    <div class="sc-table-wrap">
-    <RecurringTable :items="items" :now="stats.serverTime.value" @select="open" @trigger="trigger" @delete="remove" />
+    <div class="toolbar">
+      <label class="search">
+        <Icon name="search" class="search__icon" />
+        <input v-model="search" class="sc-input search__input" type="search" placeholder="Filter by id, job, queue or cron" aria-label="Filter schedules" />
+      </label>
+      <span class="sc-muted toolbar__meta">{{ visible.length }} of {{ items.length }}</span>
     </div>
-  </section>
-
-  <section class="sc-card">
-    <header class="sc-card__header">
-      <h2 class="sc-card__title">Cron scratchpad <span class="sc-card__subtitle">validate an expression and see when it fires</span></h2>
-    </header>
-    <div class="sc-card__body scratchpad">
-      <form class="sc-filters" @submit.prevent>
-        <label class="sc-field"><span>Expression</span><input v-model="expression" class="sc-input--mono" type="text" size="20" spellcheck="false" /></label>
-        <label class="sc-field"><span>Time zone</span><input v-model="timeZone" type="text" size="24" list="time-zones" /></label>
-        <datalist id="time-zones">
-          <option v-for="z in ['UTC', 'Europe/London', 'Europe/Berlin', 'America/New_York', 'America/Los_Angeles', 'Asia/Tokyo', 'Australia/Sydney']" :key="z" :value="z" />
-        </datalist>
-      </form>
-      <div class="presets">
-        <button v-for="p in presets" :key="p.cron" type="button" class="sc-btn sc-btn--sm" :class="{ 'sc-btn--primary': expression === p.cron }" @click="expression = p.cron">{{ p.label }}</button>
-      </div>
-      <CronPreview :expression="expression" :time-zone="timeZone" :count="5" />
+    <div class="sc-table-wrap">
+      <RecurringTable :items="visible" :now="stats.serverTime.value" @select="open" @trigger="trigger" @delete="remove" />
     </div>
   </section>
 
   <Drawer v-if="props.id" title="Schedule" @close="closeDetail">
+    <template #header>
+      <div class="drawer__heading">
+        <h2 class="drawer__title">Schedule</h2>
+        <button v-if="selected" type="button" class="sc-btn sc-btn--ghost sc-btn--sm id-chip" :title="`Copy ${selected.id}`" @click="copy(selected.id, 'Schedule id copied')">
+          <code>{{ selected.id }}</code><Icon name="copy" :size="12" />
+        </button>
+      </div>
+    </template>
     <template v-if="selected">
       <div class="sc-detail">
         <header class="sc-detail__header">
           <h2 class="sc-detail__title">
-            {{ selected.displayName }}
+            {{ describeCron(selected.cron) ?? selected.cron }}
             <span v-if="selected.nextRunAt" class="sc-badge sc-badge--scheduled">active</span>
             <span v-else class="sc-badge sc-badge--parked">parked</span>
           </h2>
           <div class="sc-detail__actions">
-            <button type="button" class="sc-btn" @click="trigger(selected)"><Icon name="play" /> Run now</button>
+            <button type="button" class="sc-btn sc-btn--primary" @click="trigger(selected)"><Icon name="play" /> Run now</button>
             <button type="button" class="sc-btn sc-btn--danger" @click="remove(selected)"><Icon name="trash" /> Delete</button>
           </div>
         </header>
+
+        <div class="countdown" :class="{ 'countdown--parked': !selected.nextRunAt }">
+          <template v-if="selected.nextRunAt">
+            <span class="countdown__label">Next run</span>
+            <span class="countdown__value"><RelativeTime :value="selected.nextRunAt" :now="stats.serverTime.value" /></span>
+            <span class="countdown__at">{{ formatDateTime(selected.nextRunAt) }}</span>
+          </template>
+          <template v-else>
+            <span class="countdown__label">Parked</span>
+            <span class="countdown__at">The expression has no future occurrence, or the time zone {{ selected.timeZoneId }} is unknown on the scheduler.</span>
+          </template>
+        </div>
+
         <dl class="sc-props">
-          <dt>Id</dt><dd><code>{{ selected.id }}</code></dd>
           <dt>Job</dt><dd><code>{{ selected.name }}</code></dd>
-          <dt>Schedule</dt><dd><span class="sc-chip">{{ selected.cron }}</span> in {{ selected.timeZoneId }}</dd>
-          <dt>Queue</dt><dd><span class="sc-chip">{{ selected.queue }}</span></dd>
-          <dt>Next run</dt>
-          <dd>
-            <template v-if="selected.nextRunAt">{{ formatDateTime(selected.nextRunAt) }} (<RelativeTime :value="selected.nextRunAt" :now="stats.serverTime.value" />)</template>
-            <span v-else class="sc-muted">Parked: the schedule has no future occurrence, or its time zone is unknown.</span>
-          </dd>
+          <dt>Cron</dt><dd><span class="sc-chip">{{ selected.cron }}</span> in {{ selected.timeZoneId }}</dd>
+          <dt>Queue</dt><dd><RouterLink :to="{ name: 'jobs', query: { queue: selected.queue } }" class="sc-link"><span class="sc-chip">{{ selected.queue }}</span></RouterLink></dd>
           <dt>Last run</dt>
           <dd>
             <template v-if="selected.lastRunAt">{{ formatDateTime(selected.lastRunAt) }} (<RelativeTime :value="selected.lastRunAt" :now="stats.serverTime.value" />)</template>
@@ -125,10 +136,21 @@ const presets: { label: string; cron: string }[] = [
           <dt>Created</dt><dd>{{ formatDateTime(selected.createdAt) }}</dd>
           <dt>Updated</dt><dd>{{ formatDateTime(selected.updatedAt) }}</dd>
         </dl>
-        <h3>Payload</h3>
-        <PayloadView :value="selected.payload" />
+
         <h3>Upcoming runs</h3>
         <CronPreview :expression="selected.cron" :time-zone="selected.timeZoneId" :count="5" />
+
+        <h3>Recent {{ selected.name }} jobs</h3>
+        <p class="sc-muted fine">Jobs do not record which schedule created them, so this lists every recent job with this job name.</p>
+        <div class="sc-table-wrap embedded">
+          <JobTable :jobs="recent.items.value" :now="stats.serverTime.value" readonly @select="(j) => router.push({ name: 'jobs', params: { id: j.id } })">
+            <template #empty><div class="sc-empty"><span class="sc-empty__title">No retained jobs</span><span>Succeeded jobs are purged after the retention window.</span></div></template>
+          </JobTable>
+        </div>
+        <RouterLink class="sc-link" :to="{ name: 'jobs', query: { name: selected.name } }">All {{ selected.name }} jobs <Icon name="arrow" :size="12" /></RouterLink>
+
+        <h3>Payload</h3>
+        <PayloadView :value="selected.payload" />
       </div>
     </template>
     <div v-else-if="recurring.data.value" class="sc-empty">

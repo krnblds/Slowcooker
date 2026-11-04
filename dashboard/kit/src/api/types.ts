@@ -83,6 +83,8 @@ export interface CronPreviewResult {
 export interface JobsQuery {
   state?: JobState | null;
   queue?: string | null;
+  /** Exact job name, e.g. "send-welcome-email". */
+  name?: string | null;
   skip?: number;
   take?: number;
 }

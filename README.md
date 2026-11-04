@@ -142,9 +142,12 @@ What it gives you:
 
 | Page | What you can do |
 |---|---|
-| Overview | State counters, per-queue counts, recent failures and completions, server time and storage |
-| Jobs | Filter by state and queue, page through, open a job by id, inspect payload and full error, requeue or delete. Filters live in the URL, so a view is a link you can share |
-| Recurring | Every schedule with next and last run, run one now, delete, cron scratchpad with presets and time zones |
+| Overview | A health line that says whether anything has failed, state counters with trend lines for the session, each queue's state mix, the most common errors among recent failures, the next scheduled runs and recent completions |
+| Jobs | State tabs with counts, filters by queue and job name, page sizes, multi-select to requeue or delete in bulk. A job opens in a drawer with its history, the error with the stack trace folded, and the payload; `j` and `k` move between jobs. Filters and the open job live in the URL, so a view is a link you can share |
+| Recurring | Every schedule in plain English ("Weekdays at 09:00") with next and last run, run now, delete, and the recent jobs of that job type |
+| Cron tester | Check an expression against the server's cron engine and time zones, see the next ten runs and the matching `Cron` builder call |
+
+`Ctrl K` (or `/`) opens a command palette for pages, queues, schedules and job ids. Display settings switch the theme, show times in local time or UTC, and pause live updates. State-changing requests carry a header that a page on another site cannot send, so the dashboard's buttons cannot be triggered cross-site.
 
 Building your own UI? `app.MapSlowcookerApi("/slowcooker")` mounts just the JSON API ([reference](docs/dashboard-api.md)), and [`dashboard/kit`](dashboard/kit/README.md) is the Vue 3 component kit the bundled UI is built from: typed client, polling composables, tables and detail views.
 

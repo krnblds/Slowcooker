@@ -222,7 +222,9 @@ public sealed class InMemoryJobStorage(TimeProvider? timeProvider = null) : IJob
         lock (_lock)
         {
             var filtered = _jobs.Values
-                .Where(j => (query.State is null || j.State == query.State) && (query.Queue is null || j.Queue == query.Queue))
+                .Where(j => (query.State is null || j.State == query.State)
+                            && (query.Queue is null || j.Queue == query.Queue)
+                            && (query.Name is null || j.Job.Name == query.Name))
                 .OrderByDescending(j => j.CreatedAt)
                 .ThenByDescending(j => j.Id, StringComparer.Ordinal)
                 .ToList();
