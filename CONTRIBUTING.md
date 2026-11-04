@@ -9,3 +9,16 @@ Thanks for helping. A few things that keep the project healthy:
 * **Style** is enforced by `.editorconfig` and `TreatWarningsAsErrors`. File-scoped namespaces, `sealed` by default, no unexplained `catch {}`.
 
 Open an issue before a large change so the design can be discussed first.
+
+## Releasing
+
+Packages are published by `.github/workflows/release.yml` when a version tag is pushed:
+
+```bash
+# update CHANGELOG.md, then
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+The workflow runs the tests, packs every project under `src/` with that version, pushes to NuGet (`NUGET_API_KEY` secret) and creates a GitHub release with the packages attached. Between releases `Directory.Build.props` holds the next version as `VersionPrefix`.
+
+CI also checks formatting (`dotnet format --verify-no-changes`) and that every package packs; run `dotnet format` before pushing.
