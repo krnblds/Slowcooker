@@ -16,10 +16,13 @@ public sealed class SendWelcomeEmailHandler(ILogger<SendWelcomeEmailHandler> log
     public async Task HandleAsync(SendWelcomeEmail job, JobContext context)
     {
         logger.LogInformation("Sending welcome email to {To} (attempt {Attempt})", job.To, context.Attempt);
-        await Task.Delay(TimeSpan.FromMilliseconds(300), context.CancellationToken); // pretend to talk to an email provider
+        await Task.Delay(Random.Shared.Next(200, 1500), context.CancellationToken); // pretend to talk to an email provider
 
+        // Addresses at flaky.example time out twice and then succeed; dead.example never succeeds (ends up Failed).
         if (job.To.EndsWith("@flaky.example", StringComparison.OrdinalIgnoreCase) && context.Attempt < 3)
-            throw new InvalidOperationException("The email provider timed out. It will be retried with backoff.");
+            throw new TimeoutException("The email provider timed out. It will be retried with backoff.");
+        if (job.To.EndsWith("@dead.example", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"Mailbox {job.To} does not exist (550 5.1.1).");
 
         logger.LogInformation("Welcome email delivered to {To}", job.To);
     }
