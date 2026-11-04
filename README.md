@@ -48,9 +48,10 @@ The rest of this file is the user guide. [`docs/design.md`](docs/design.md) expl
 | `Slowcooker.Storage.Redis` | Redis storage (StackExchange.Redis), every operation a single Lua script |
 | `Slowcooker.Storage.InMemory` | Process-local storage for tests and development |
 | `Slowcooker.AspNetCore` | The dashboard: bundled UI (`.AddAdminUserInterface()`) and its HTTP API (`app.MapSlowcookerApi()` on its own) |
-| `dashboard/` | Vue 3 + TypeScript source of that UI, usable as a kit for your own (not a NuGet package) |
+| `dashboard/kit` | Vue 3 component kit for building your own dashboard on the API: typed client, polling composables, tables and detail views. Source to copy, not an npm package |
+| `dashboard/admin` | The bundled UI, built on the kit and compiled into `Slowcooker.AspNetCore` |
 
-Targets .NET 10. Not on NuGet yet; reference the projects directly or `dotnet pack` them.
+Targets .NET 10. Not on NuGet yet; reference the projects directly or `dotnet pack` them. The dashboard is inside the `Slowcooker.AspNetCore` package, so nothing but NuGet is needed to use it.
 
 ## Quick start
 
@@ -122,7 +123,7 @@ builder.Services.AddSlowcooker()
 
 That is the whole setup: the UI is compiled into `Slowcooker.AspNetCore` and mounted for you after your own middleware, so nothing else goes in `Program.cs`. `ui.Path` moves it. Without `RequireAuthorization` it answers local requests only, because the API can requeue and delete jobs. If your app has a catch-all route (a SPA fallback), call `app.MapSlowcookerAdminUserInterface()` explicitly so the dashboard takes precedence.
 
-Building your own UI instead? `app.MapSlowcookerApi("/slowcooker").RequireAuthorization("ops")` mounts just the JSON API; [`docs/dashboard-api.md`](docs/dashboard-api.md) lists the endpoints, and [`dashboard/`](dashboard/README.md) is the Vue 3 source of the bundled UI, written as a kit (typed client, polling composables, tables and detail views) you can build on.
+Building your own UI instead? `app.MapSlowcookerApi("/slowcooker").RequireAuthorization("ops")` mounts just the JSON API; [`docs/dashboard-api.md`](docs/dashboard-api.md) lists the endpoints, and [`dashboard/kit`](dashboard/kit/README.md) is a Vue 3 component kit on top of it (typed client, polling composables, tables and detail views) that the bundled UI is itself built from.
 
 ## Concepts
 

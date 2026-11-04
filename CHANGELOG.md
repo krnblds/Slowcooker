@@ -11,4 +11,4 @@ First cut.
 * Storage providers: PostgreSQL (`SKIP LOCKED`, `LISTEN/NOTIFY`), Redis (Lua), in-memory; shared contract test suite.
 * `Slowcooker.AspNetCore`: dashboard JSON API with local-only default access, including a cron preview endpoint.
 * `Slowcooker.AspNetCore`: bundled dashboard. `AddSlowcooker().AddAdminUserInterface()` serves the compiled UI at `/slowcooker/` and the API at `/slowcooker/api` with no further setup; `MapSlowcookerAdminUserInterface()` for explicit placement. The UI is embedded in the assembly, so the package works without Node or static files.
-* `dashboard/`: Vue 3 + TypeScript source of that UI, written as a component kit (typed client, polling composables, tables, detail, cron preview) for building your own.
+* `dashboard/kit`: Vue 3 + TypeScript component kit for building your own dashboard on the API: typed client, polling composables, tables, detail, cron preview, with a vitest suite. Source to copy, not an npm package. The bundled UI (`dashboard/admin`) is built on it.
