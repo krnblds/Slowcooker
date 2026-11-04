@@ -79,4 +79,29 @@ describe("JobTable", () => {
     const wrapper = mount(JobTable, { props: { jobs: [] }, slots: { empty: "Nothing queued" } });
     expect(wrapper.text()).toContain("Nothing queued");
   });
+
+  it("binds row checkboxes and select-all to v-model:selection", async () => {
+    const jobs = [job(), job({ id: "02" })];
+    const wrapper = mount(JobTable, { props: { jobs, selectable: true, selection: ["02"], "onUpdate:selection": (v: string[]) => wrapper.setProps({ selection: v }) } });
+
+    const boxes = () => wrapper.findAll<HTMLInputElement>("input[type=checkbox]");
+    expect(boxes()).toHaveLength(3);
+    expect(boxes()[0].element.indeterminate).toBe(true);
+    expect(boxes()[2].element.checked).toBe(true);
+
+    await boxes()[1].setValue(true);
+    expect(wrapper.props("selection")).toEqual(["02", "01"]);
+    expect(wrapper.emitted("select")).toBeUndefined();
+
+    await boxes()[0].setValue(false);
+    expect(wrapper.props("selection")).toEqual([]);
+  });
+
+  it("marks due and retrying scheduled jobs", () => {
+    const now = "2026-06-01T08:10:00+00:00";
+    const wrapper = mount(JobTable, {
+      props: { now, jobs: [job(), job({ id: "02", attempt: 1, lastError: "boom", runAt: "2026-06-01T08:20:00+00:00" }), job({ id: "03", runAt: "2026-06-01T09:00:00+00:00" })] },
+    });
+    expect(wrapper.findAll("tbody tr").map((r) => r.find(".sc-hint").exists() ? r.find(".sc-hint").text() : "")).toEqual(["due", "retry", ""]);
+  });
 });
