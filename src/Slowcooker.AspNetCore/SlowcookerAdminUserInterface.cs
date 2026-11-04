@@ -52,8 +52,8 @@ public static class SlowcookerAdminUserInterface
         group.AddEndpointFilter(new SlowcookerApi.AccessFilter(options.AllowUnauthenticatedRemoteAccess));
 
         SlowcookerApi.MapEndpoints(group.MapGroup("/api"));
-        group.MapGet("/", EmbeddedDashboard.Index).ExcludeFromDescription();
-        group.MapGet("/{**path}", EmbeddedDashboard.Asset).ExcludeFromDescription();
+        group.MapGet("/", (HttpContext http) => EmbeddedDashboard.Index(http, options)).ExcludeFromDescription();
+        group.MapGet("/{**path}", (HttpContext http, string path) => EmbeddedDashboard.Asset(http, options, path)).ExcludeFromDescription();
 
         if (options.AuthorizationPolicies is { } policies)
         {
