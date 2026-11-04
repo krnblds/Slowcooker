@@ -25,7 +25,7 @@ const state = defineModel<JobState | null>("state", { default: null });
       :aria-selected="state === s"
       @click="state = s"
     >
-      <span class="sc-tab__label">{{ s }}</span><span v-if="counts?.[s] !== undefined" class="sc-tab__count">{{ counts[s] }}</span>
+      <span class="sc-tab__label">{{ s }}</span><span v-if="counts?.[s] !== undefined" class="sc-tab__count" :class="{ 'sc-tab__count--alert': s === 'failed' && (counts[s] ?? 0) > 0 }">{{ counts[s] }}</span>
     </button>
   </div>
 </template>

@@ -111,7 +111,10 @@ Everything is styled through `sc-*` classes and these variables (defined for lig
 --sc-bg --sc-fg --sc-muted --sc-border --sc-surface --sc-accent
 --sc-scheduled --sc-processing --sc-succeeded --sc-failed
 --sc-radius --sc-font --sc-mono
+--sc-brand-2 --sc-toast-bg --sc-toast-fg     /* used by the admin shell */
 ```
+
+Each theme also sets `color-scheme`, so native checkboxes, selects and scrollbars follow light and dark.
 
 Override them in your own stylesheet, or skip `styles.css` entirely and style the classes yourself. Components contain no inline styles.
 

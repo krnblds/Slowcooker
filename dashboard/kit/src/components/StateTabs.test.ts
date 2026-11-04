@@ -12,6 +12,8 @@ describe("StateTabs", () => {
     expect(tabs[2].find(".sc-tab__count").exists()).toBe(false);
     expect(tabs[4].classes()).toContain("sc-tab--active");
     expect(tabs[4].attributes("aria-selected")).toBe("true");
+    expect(tabs[4].find(".sc-tab__count").classes()).toContain("sc-tab__count--alert");
+    expect(mount(StateTabs, { props: { counts: { failed: 0 } } }).find(".sc-tab--failed .sc-tab__count").classes()).not.toContain("sc-tab__count--alert");
   });
 
   it("updates v-model:state, with null for All", async () => {

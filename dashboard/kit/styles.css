@@ -5,6 +5,7 @@
 */
 
 :root {
+  color-scheme: light;
   --sc-font: "Inter", "SF Pro Text", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   --sc-mono: "JetBrains Mono", ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
 
@@ -23,6 +24,9 @@
   --sc-accent-fg: #ffffff;
   --sc-accent-soft: color-mix(in srgb, var(--sc-accent) 10%, transparent);
   --sc-ring: color-mix(in srgb, var(--sc-accent) 28%, transparent);
+  --sc-brand-2: #a855f7;
+  --sc-toast-bg: #0f172a;
+  --sc-toast-fg: #f8fafc;
 
   --sc-scheduled: #2563eb;
   --sc-processing: #d97706;
@@ -47,6 +51,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --sc-bg: #0b0d12;
     --sc-surface: #12151c;
     --sc-surface-2: #181c25;
@@ -59,6 +64,9 @@
     --sc-accent: #818cf8;
     --sc-accent-hover: #a5b4fc;
     --sc-accent-fg: #0b0d12;
+    --sc-brand-2: #c084fc;
+    --sc-toast-bg: #e7e9ee;
+    --sc-toast-fg: #0b0d12;
     --sc-scheduled: #60a5fa;
     --sc-processing: #fbbf24;
     --sc-succeeded: #4ade80;
@@ -70,6 +78,7 @@
   }
 }
 :root[data-theme="dark"] {
+  color-scheme: dark;
   --sc-bg: #0b0d12;
   --sc-surface: #12151c;
   --sc-surface-2: #181c25;
@@ -82,6 +91,9 @@
   --sc-accent: #818cf8;
   --sc-accent-hover: #a5b4fc;
   --sc-accent-fg: #0b0d12;
+  --sc-brand-2: #c084fc;
+  --sc-toast-bg: #e7e9ee;
+  --sc-toast-fg: #0b0d12;
   --sc-scheduled: #60a5fa;
   --sc-processing: #fbbf24;
   --sc-succeeded: #4ade80;
@@ -279,7 +291,7 @@ pre code { padding: 0; background: none; font-size: inherit; color: inherit; }
 .sc-row--clickable:hover { background: var(--sc-surface-2); }
 .sc-row--selected, .sc-row--selected:hover { background: var(--sc-accent-soft); box-shadow: inset 3px 0 0 var(--sc-accent); }
 .sc-job__name { font-weight: 550; color: var(--sc-fg); }
-.sc-job__error { margin-top: 0.15rem; font-size: var(--sc-text-sm); color: var(--sc-failed); max-width: 36rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-job__error { margin-top: 0.15rem; font-size: var(--sc-text-sm); color: var(--sc-failed); max-width: min(22rem, 26vw); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sc-table .sc-actions .sc-btn { opacity: 0.75; }
 .sc-table tr:hover .sc-actions .sc-btn, .sc-table .sc-actions .sc-btn:focus-visible { opacity: 1; }
 
@@ -444,7 +456,7 @@ pre code { padding: 0; background: none; font-size: inherit; color: inherit; }
 .sc-tab--failed { --c: var(--sc-failed); }
 .sc-tab:not(:first-child)::before { content: ""; width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--c); flex: none; }
 .sc-tab__count { min-width: 1.25rem; padding: 0 0.35rem; border-radius: 999px; background: var(--sc-surface-3); color: var(--sc-fg-2); font-size: var(--sc-text-xs); font-weight: 600; line-height: 1.25rem; text-align: center; font-variant-numeric: tabular-nums; }
-.sc-tab--failed .sc-tab__count:not(:empty) { background: color-mix(in srgb, var(--sc-failed) 14%, transparent); color: var(--sc-failed); }
+.sc-tab__count--alert { background: color-mix(in srgb, var(--sc-failed) 14%, transparent); color: var(--sc-failed); }
 
 /* ---------- Selection ---------- */
 
