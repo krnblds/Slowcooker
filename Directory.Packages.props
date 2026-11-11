@@ -5,9 +5,9 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Runtime -->
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="11.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.14" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="11.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.14" />
     <PackageVersion Include="Npgsql" Version="10.0.3" />
     <PackageVersion Include="StackExchange.Redis" Version="3.4.31" />
